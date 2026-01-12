@@ -4,11 +4,14 @@ on:
   push:
     branches:
       - main
+      - STAGING
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,8 +33,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:latest
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
@@ -45,10 +48,10 @@ jobs:
         uses: azure/aci-deploy-action@v1
         with:
           resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          name: cwm-container-test
-          image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.sha }}
+          name: ${{ github.ref == 'refs/heads/main' && 'cwm-prod' || 'cwm-staging' }}
+          image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           registry-login-server: ${{ secrets.ACR_LOGIN_SERVER }}
           registry-username: ${{ secrets.ACR_USERNAME }}
           registry-password: ${{ secrets.ACR_PASSWORD }}
           location: ${{ secrets.AZURE_LOCATION }}
-          dns-name-label: cwm-container-test
+          dns-name-label: ${{ github.ref == 'refs/heads/main' && 'cwm-prod' || 'cwm-staging' }}
