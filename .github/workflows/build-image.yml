@@ -34,3 +34,20 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Container Instances
+        uses: azure/aci-deploy-action@v1
+        with:
+          resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          name: cwm-container-test
+          image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.sha }}
+          registry-login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          registry-username: ${{ secrets.ACR_USERNAME }}
+          registry-password: ${{ secrets.ACR_PASSWORD }}
+          location: ${{ secrets.AZURE_LOCATION }}
+          dns-name-label: cwm-container-test
