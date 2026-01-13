@@ -13,7 +13,7 @@ jobs:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     strategy:
       matrix:
-        service: [container-service-one, container-service-two, container-service-three]
+        service: [app1]
     
     steps:
       - name: Checkout repository
