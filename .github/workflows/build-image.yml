@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    strategy:
+      matrix:
+        service: [container-service-one, container-service-two, container-service-three]
     
     steps:
       - name: Checkout repository
@@ -31,10 +34,11 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./services/${{ matrix.service }}/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
@@ -48,10 +52,10 @@ jobs:
         uses: azure/aci-deploy-action@v1
         with:
           resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
-          name: ${{ github.ref == 'refs/heads/main' && 'cwm-prod' || 'cwm-staging' }}
-          image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-container-test:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+          name: ${{ github.ref == 'refs/heads/main' && format('cwm-prod-{0}', matrix.service) || format('cwm-staging-{0}', matrix.service) }}
+          image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-${{ matrix.service }}:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           registry-login-server: ${{ secrets.ACR_LOGIN_SERVER }}
           registry-username: ${{ secrets.ACR_USERNAME }}
           registry-password: ${{ secrets.ACR_PASSWORD }}
           location: ${{ secrets.AZURE_LOCATION }}
-          dns-name-label: ${{ github.ref == 'refs/heads/main' && 'cwm-prod' || 'cwm-staging' }}
+          dns-name-label: ${{ github.ref == 'refs/heads/main' && format('cwm-prod-{0}', matrix.service) || format('cwm-staging-{0}', matrix.service) }}

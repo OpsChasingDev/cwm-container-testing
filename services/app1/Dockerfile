@@ -10,8 +10,12 @@ RUN apt-get update && \
 # Create the application directory
 RUN mkdir -p /opt/cwm-app/bin
 
-# Copy the PowerShell script into the container
-COPY app.ps1 /opt/cwm-app/bin/app.ps1
+# Copy shared modules
+COPY shared/modules/ /opt/cwm-app/modules/
+COPY shared/config/ /opt/cwm-app/config/
+
+# Copy service-specific script
+COPY services/app1/app.ps1 /opt/cwm-app/bin/app.ps1
 
 # Make the script executable
 RUN chmod +x /opt/cwm-app/bin/app.ps1
