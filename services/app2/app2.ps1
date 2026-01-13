@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 # PowerShell script that creates timestamped files every 5 seconds
-Write-Host "APP1"
+Write-Host "APP2"
 Write-Host "Starting file generation script..."
 Write-Host "Files will be created in /opt/cwm-app/bin/"
 
