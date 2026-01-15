@@ -1,12 +1,6 @@
 # Use the official PowerShell image (based on Debian slim - lightweight)
 FROM mcr.microsoft.com/powershell:7.4-debian-11
 
-# Install git
-RUN apt-get update && \
-    apt-get install -y git && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
 # Create the application directory
 RUN mkdir -p /opt/cwm-app/bin
 
