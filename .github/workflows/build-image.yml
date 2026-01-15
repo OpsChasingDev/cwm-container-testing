@@ -64,6 +64,12 @@ jobs:
           location: ${{ secrets.AZURE_LOCATION }}
           name: $CONTAINER_GROUP_NAME
           properties:
+            volumes:
+            - name: cwm-shared-data
+              azureFile:
+                shareName: cwm-shared-data
+                storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+                storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
             - name: app1
               properties:
@@ -83,6 +89,9 @@ jobs:
                     value: ${{ secrets.CWM_PublicKey }}
                   - name: CWM_PrivateKey
                     value: ${{ secrets.CWM_PrivateKey }}
+                volumeMounts:
+                  - name: cwm-shared-data
+                    mountPath: /mnt/cwm-data
             - name: app2
               properties:
                 image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app2:$IMAGE_TAG
@@ -101,6 +110,9 @@ jobs:
                     value: ${{ secrets.CWM_PublicKey }}
                   - name: CWM_PrivateKey
                     value: ${{ secrets.CWM_PrivateKey }}
+                volumeMounts:
+                  - name: cwm-shared-data
+                    mountPath: /mnt/cwm-data
             osType: Linux
             imageRegistryCredentials:
             - server: ${{ secrets.ACR_LOGIN_SERVER }}
