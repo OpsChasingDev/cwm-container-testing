@@ -77,6 +77,12 @@ jobs:
                     value: app1
                   - name: LOG_LEVEL
                     value: Info
+                  - name: CWM_ClientID
+                    value: ${{ secrets.CWM_ClientID }}
+                  - name: CWM_PublicKey
+                    value: ${{ secrets.CWM_PublicKey }}
+                  - name: CWM_PrivateKey
+                    value: ${{ secrets.CWM_PrivateKey }}
             - name: app2
               properties:
                 image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app2:$IMAGE_TAG
@@ -89,6 +95,12 @@ jobs:
                     value: app2
                   - name: LOG_LEVEL
                     value: Info
+                  - name: CWM_ClientID
+                    value: ${{ secrets.CWM_ClientID }}
+                  - name: CWM_PublicKey
+                    value: ${{ secrets.CWM_PublicKey }}
+                  - name: CWM_PrivateKey
+                    value: ${{ secrets.CWM_PrivateKey }}
             osType: Linux
             imageRegistryCredentials:
             - server: ${{ secrets.ACR_LOGIN_SERVER }}

@@ -9,6 +9,9 @@ services:
     environment:
       - SERVICE_NAME=app1
       - LOG_LEVEL=Info
+      - CWM_ClientID=${CWM_ClientID}
+      - CWM_PublicKey=${CWM_PublicKey}
+      - CWM_PrivateKey=${CWM_PrivateKey}
     restart: unless-stopped
 
   app2:
@@ -19,4 +22,7 @@ services:
     environment:
       - SERVICE_NAME=app2
       - LOG_LEVEL=Info
+      - CWM_ClientID=${CWM_ClientID}
+      - CWM_PublicKey=${CWM_PublicKey}
+      - CWM_PrivateKey=${CWM_PrivateKey}
     restart: unless-stopped
