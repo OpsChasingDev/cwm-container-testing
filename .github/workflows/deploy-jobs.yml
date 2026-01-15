@@ -1,10 +1,15 @@
-name: Build and Push Docker Image
+name: Build and Deploy Job Containers
 
 on:
   push:
     branches:
       - main
       - STAGING
+    paths:
+      - 'services/app1/**'
+      - 'services/app2/**'
+      - 'shared/**'
+      - '.github/workflows/deploy-jobs.yml'
 
 jobs:
   build:
@@ -25,6 +30,7 @@ jobs:
           registry: ${{ secrets.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
+          logout: true
 
       - name: Build app1 image
         id: docker_build_app1
@@ -53,13 +59,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy to Azure Container Instances
+      - name: Deploy Job Containers to Azure Container Instances
         run: |
           # Create a temporary deployment file with substituted values
-          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod' || 'cwm-staging' }}
+          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-jobs' || 'cwm-staging-jobs' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           
-          cat > /tmp/aci-deployment.yaml << EOF
+          cat > /tmp/aci-jobs-deployment.yaml << EOF
           apiVersion: '2021-09-01'
           location: ${{ secrets.AZURE_LOCATION }}
           name: $CONTAINER_GROUP_NAME
@@ -130,4 +136,4 @@ jobs:
           # Create the multi-container group from the deployment file
           az container create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --file /tmp/aci-deployment.yaml
+            --file /tmp/aci-jobs-deployment.yaml
