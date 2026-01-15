@@ -1,4 +1,4 @@
-name: Build and Deploy Job Containers
+name: Build and Deploy App2
 
 on:
   push:
@@ -6,10 +6,9 @@ on:
       - main
       - STAGING
     paths:
-      - 'services/app1/**'
       - 'services/app2/**'
       - 'shared/**'
-      - '.github/workflows/deploy-jobs.yml'
+      - '.github/workflows/deploy-app2.yml'
 
 jobs:
   build:
@@ -30,18 +29,6 @@ jobs:
           registry: ${{ secrets.ACR_LOGIN_SERVER }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
-          logout: true
-
-      - name: Build app1 image
-        id: docker_build_app1
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./services/app1/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app1:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app1:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Build app2 image
         id: docker_build_app2
@@ -59,13 +46,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Job Containers to Azure Container Instances
+      - name: Deploy App2 to Azure Container Instances
         run: |
           # Create a temporary deployment file with substituted values
-          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-jobs' || 'cwm-staging-jobs' }}
+          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-app2' || 'cwm-staging-app2' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           
-          cat > /tmp/aci-jobs-deployment.yaml << EOF
+          cat > /tmp/aci-app2-deployment.yaml << EOF
           apiVersion: '2021-09-01'
           location: ${{ secrets.AZURE_LOCATION }}
           name: $CONTAINER_GROUP_NAME
@@ -77,27 +64,6 @@ jobs:
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
-            - name: app1
-              properties:
-                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app1:$IMAGE_TAG
-                resources:
-                  requests:
-                    cpu: 1.0
-                    memoryInGb: 1.5
-                environmentVariables:
-                  - name: SERVICE_NAME
-                    value: app1
-                  - name: LOG_LEVEL
-                    value: Info
-                  - name: CWM_ClientID
-                    value: ${{ secrets.CWM_ClientID }}
-                  - name: CWM_PublicKey
-                    value: ${{ secrets.CWM_PublicKey }}
-                  - name: CWM_PrivateKey
-                    value: ${{ secrets.CWM_PrivateKey }}
-                volumeMounts:
-                  - name: cwm-shared-data
-                    mountPath: /mnt/cwm-data
             - name: app2
               properties:
                 image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app2:$IMAGE_TAG
@@ -133,7 +99,7 @@ jobs:
             --name $CONTAINER_GROUP_NAME \
             --yes 2>/dev/null || true
           
-          # Create the multi-container group from the deployment file
+          # Create the container group from the deployment file
           az container create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --file /tmp/aci-jobs-deployment.yaml
+            --file /tmp/aci-app2-deployment.yaml
