@@ -6,7 +6,6 @@ RUN mkdir -p /opt/cwm-app/bin
 
 # Copy shared modules
 COPY shared/modules/ /opt/cwm-app/modules/
-COPY shared/config/ /opt/cwm-app/config/
 
 # Copy service-specific script
 COPY services/app2/app2.ps1 /opt/cwm-app/bin/app2.ps1
