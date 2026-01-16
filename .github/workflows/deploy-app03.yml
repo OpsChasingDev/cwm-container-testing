@@ -1,4 +1,4 @@
-name: Build and Deploy AppTimeSinceLastTimeEntry
+name: Build and Deploy App03
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
       - main
       - STAGING
     paths:
-      - 'services/appTimeSinceLastTimeEntry/**'
+      - 'services/app03/**'
       - 'shared/**'
-      - '.github/workflows/deploy-appTimeSinceLastTimeEntry.yml'
+      - '.github/workflows/deploy-app03.yml'
 
 jobs:
   build:
@@ -30,30 +30,30 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build appTimeSinceLastTimeEntry image
-        id: docker_build_appTimeSinceLastTimeEntry
+      - name: Build app03 image
+        id: docker_build_app03
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./services/appTimeSinceLastTimeEntry/Dockerfile
+          file: ./services/app03/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app03:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app03:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Login to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy AppTimeSinceLastTimeEntry to Azure Container Instances
+      - name: Deploy App03 to Azure Container Instances
         run: |
           # Create a temporary deployment file with substituted values
-          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-appTimeSinceLastTimeEntry' || 'cwm-staging-appTimeSinceLastTimeEntry' }}
+          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-app03' || 'cwm-staging-app03' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
           
-          cat > /tmp/aci-appTimeSinceLastTimeEntry-deployment.yaml << EOF
+          cat > /tmp/aci-app03-deployment.yaml << EOF
           apiVersion: '2021-09-01'
           location: ${{ secrets.AZURE_LOCATION }}
           name: $CONTAINER_GROUP_NAME
@@ -65,16 +65,16 @@ jobs:
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
-            - name: appTimeSinceLastTimeEntry
+            - name: app03
               properties:
-                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:$IMAGE_TAG
+                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app03:$IMAGE_TAG
                 resources:
                   requests:
                     cpu: 0.5
                     memoryInGb: 0.5
                 environmentVariables:
                   - name: SERVICE_NAME
-                    value: appTimeSinceLastTimeEntry
+                    value: app03
                   - name: LOG_LEVEL
                     value: Info
                 volumeMounts:
@@ -97,4 +97,4 @@ jobs:
           # Create the container group from the deployment file
           az container create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --file /tmp/aci-appTimeSinceLastTimeEntry-deployment.yaml
+            --file /tmp/aci-app03-deployment.yaml

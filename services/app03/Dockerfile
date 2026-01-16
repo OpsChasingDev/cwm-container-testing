@@ -9,7 +9,7 @@ COPY shared/modules/ /opt/cwm-app/modules/
 COPY shared/config/ /opt/cwm-app/config/
 
 # Copy service-specific script
-COPY services/appTimeSinceLastTimeEntry/appTimeSinceLastTimeEntry.ps1 /opt/cwm-app/bin/appTimeSinceLastTimeEntry.ps1
+COPY services/app03/appTimeSinceLastTimeEntry.ps1 /opt/cwm-app/bin/appTimeSinceLastTimeEntry.ps1
 
 # Make the script executable
 RUN chmod +x /opt/cwm-app/bin/appTimeSinceLastTimeEntry.ps1
