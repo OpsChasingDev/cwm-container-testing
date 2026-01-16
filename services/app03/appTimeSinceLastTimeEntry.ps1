@@ -5,6 +5,7 @@
 $modulePath = "/opt/cwm-app/modules/CWMShared.psm1"
 if (Test-Path $modulePath) {
     Import-Module $modulePath -Force
+    New-CWMLog -Type "Info" -Message "CWMShared module imported successfully"
 }
 else {
     Write-Host "ERROR: CWMShared module not found at $modulePath"
