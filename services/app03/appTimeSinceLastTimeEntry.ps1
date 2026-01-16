@@ -14,16 +14,16 @@ else {
 }
 
 # Import ConnectWiseManageAPI module from PowerShell Gallery
-if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
-    try {
-        Install-Module -Name ConnectWiseManageAPI -Scope CurrentUser -Force -AllowClobber
-        New-CWMLog -Type "Info" -Message "ConnectWiseManageAPI module installed successfully"
-    }
-    catch {
-        New-CWMLog -Type "Error" -Message "Failed to install ConnectWiseManageAPI module: $($_.Exception.Message)"
-        exit 1
-    }
-}
+# if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
+#     try {
+#         Install-Module -Name ConnectWiseManageAPI -Scope CurrentUser -Force -AllowClobber
+#         New-CWMLog -Type "Info" -Message "ConnectWiseManageAPI module installed successfully"
+#     }
+#     catch {
+#         New-CWMLog -Type "Error" -Message "Failed to install ConnectWiseManageAPI module: $($_.Exception.Message)"
+#         exit 1
+#     }
+# }
 
 # Initialize the application with data path and logging setup
 $dataPath = Initialize-CWMApp -AppName $script:appName
@@ -31,7 +31,7 @@ New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
-Connect-CWMAPI
+# Connect-CWMAPI
 
 #endregion SHARED INTITALIZATION
 
