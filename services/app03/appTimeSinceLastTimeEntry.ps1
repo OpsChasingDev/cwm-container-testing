@@ -10,7 +10,6 @@ if (Test-Path $modulePath) {
 }
 else {
     Write-Host "ERROR: CWMShared module not found at $modulePath"
-    exit 1
 }
 
 # Import ConnectWiseManageAPI module from PowerShell Gallery
@@ -21,7 +20,6 @@ if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
     }
     catch {
         New-CWMLog -Type "Error" -Message "Failed to install ConnectWiseManageAPI module: $($_.Exception.Message)"
-        # exit 1
     }
 }
 
@@ -44,7 +42,6 @@ try {
 }
 catch {
     New-CWMLog -Type "Error" -Message "Failed to connect to ConnectWise Manage API: $($_.Exception.Message)"
-    # exit 1
 }
 
 #endregion SHARED INTITALIZATION
