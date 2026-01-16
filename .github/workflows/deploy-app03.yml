@@ -77,6 +77,16 @@ jobs:
                     value: app03
                   - name: LOG_LEVEL
                     value: Info
+                  - name: CWM_ClientID
+                    value: ${{ secrets.CWM_CLIENTID }}
+                  - name: CWM_Company
+                    value: ${{ secrets.CWM_COMPANY }}
+                  - name: CWM_PrivateKey
+                    value: ${{ secrets.CWM_PRIVATEKEY }}
+                  - name: CWM_PublicKey
+                    value: ${{ secrets.CWM_PUBLICKEY }}
+                  - name: CWM_Server
+                    value: ${{ secrets.CWM_SERVER }}
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
