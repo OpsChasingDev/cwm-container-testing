@@ -41,7 +41,7 @@ catch {
 
 # Main loop
 
-#check every 10 seconds to ensure the data path is accessible and log accordingly
+# check every 10 seconds to ensure the data path is accessible and log accordingly
 while ($true) { 
     New-CWMLog -Type "Info" -Message "Service is running normally"
     if (Test-Path $dataPath) {
@@ -49,10 +49,10 @@ while ($true) {
     } else {
         New-CWMLog -Type "Error" -Message "Data path is not accessible: $dataPath"
     }
-    test running Get-CWMTicket -id 1111111 to ensure API connectivity
+    # Test running Get-CWMTicket -id 1111111 to ensure API connectivity
     try {
         $testTicket = Get-CWMTicket -id 1111111
-        New-CWMLog -Type "Info" -Message "API connectivity test successful"
+        New-CWMLog -Type "Info" -Message "API connectivity test successful and ticket retrieved: $($testTicket.id)"
     }
     catch {
         New-CWMLog -Type "Error" -Message "API connectivity test failed: $($_.Exception.Message)"
