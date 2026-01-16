@@ -91,7 +91,7 @@ function Connect-CWMAPI {
     }
     try {
         $api = Connect-CWM @Connection
-        New-CWMLog -Type "Info" -Message "Connected to ConnectWise Manage API at $($env:CWM_API_SERVER)"
+        New-CWMLog -Type "Info" -Message "ConnectWise Manage API connection successful"
         return $api
     }
     catch {
