@@ -31,16 +31,16 @@ New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
-$Connection = @{
-    Server = $env:CWM_Server
-    Company = $env:CWM_Company
-    PubKey = $env:CWM_PublicKey
-    PrivateKey = $env:CWM_PrivateKey
-    ClientId = $env:CWM_ClientID
-}
+# $Connection = @{
+#     Server = $env:CWM_Server
+#     Company = $env:CWM_Company
+#     PubKey = $env:CWM_PublicKey
+#     PrivateKey = $env:CWM_PrivateKey
+#     ClientId = $env:CWM_ClientID
+# }
 try {
-    Connect-CWM @Connection
-    New-CWMLog -Type "Info" -Message "Connected to ConnectWise Manage API at $($env:CWM_API_SERVER)"
+    Connect-CWMAPI
+    New-CWMLog -Type "Info" -Message "Connected to ConnectWise Manage API at $($env:CWM_Server)"
 }
 catch {
     New-CWMLog -Type "Error" -Message "Failed to connect to ConnectWise Manage API: $($_.Exception.Message)"
