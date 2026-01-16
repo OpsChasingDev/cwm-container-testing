@@ -50,6 +50,7 @@ jobs:
           # Create a temporary deployment file with substituted values
           CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-web' || 'cwm-staging-web' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+          SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
           
           cat > /tmp/aci-web-deployment.yaml << EOF
           apiVersion: '2021-09-01'
@@ -59,7 +60,7 @@ jobs:
             volumes:
             - name: cwm-shared-data
               azureFile:
-                shareName: cwm-shared-data
+                shareName: $SHARE_NAME
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
