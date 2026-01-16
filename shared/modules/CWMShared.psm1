@@ -81,5 +81,21 @@ function Initialize-CWMApp {
     return $script:dataPath
 }
 
-# Export the functions
-Export-ModuleMember -Function New-CWMLog, Initialize-CWMApp
+function Connect-CWMAPI {
+    $Connection = @{
+        Server = $env:CWM_API_SERVER
+        Company = $env:CWM_API_COMPANY
+        PubKey = $env:CWM_API_PUBLIC_KEY
+        PrivateKey = $env:CWM_API_PRIVATE_KEY
+        ClientId = $env:CWM_API_CLIENT_ID
+    }
+    try {
+        $api = Connect-CWM @Connection
+        New-CWMLog -Type "Info" -Message "Connected to ConnectWise Manage API at $($env:CWM_API_SERVER)"
+        return $api
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to connect to ConnectWise Manage API: $($_.Exception.Message)"
+        throw
+    }
+}

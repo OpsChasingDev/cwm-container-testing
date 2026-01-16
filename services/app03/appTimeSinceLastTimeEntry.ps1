@@ -30,6 +30,9 @@ $dataPath = Initialize-CWMApp -AppName $script:appName
 New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
+# Connect to ConnectWise Manage API
+Connect-CWMAPI
+
 #endregion SHARED INTITALIZATION
 
 # Main loop
