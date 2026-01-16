@@ -31,7 +31,7 @@ New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
-# Connect-CWMAPI
+Connect-CWMAPI
 
 #endregion SHARED INTITALIZATION
 
