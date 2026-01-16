@@ -31,7 +31,21 @@ New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
-Connect-CWMAPI
+$Connection = @{
+    Server = $env:CWM_API_SERVER
+    Company = $env:CWM_API_COMPANY
+    PubKey = $env:CWM_API_PUBLIC_KEY
+    PrivateKey = $env:CWM_API_PRIVATE_KEY
+    ClientId = $env:CWM_API_CLIENT_ID
+}
+try {
+    Connect-CWM @Connection
+    New-CWMLog -Type "Info" -Message "Connected to ConnectWise Manage API at $($env:CWM_API_SERVER)"
+}
+catch {
+    New-CWMLog -Type "Error" -Message "Failed to connect to ConnectWise Manage API: $($_.Exception.Message)"
+    # exit 1
+}
 
 #endregion SHARED INTITALIZATION
 
