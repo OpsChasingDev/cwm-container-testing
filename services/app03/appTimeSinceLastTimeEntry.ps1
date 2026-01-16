@@ -45,5 +45,13 @@ while ($true) {
     } else {
         New-CWMLog -Type "Error" -Message "Data path is not accessible: $dataPath"
     }
+    # test running Get-CWMTicket -id 1111111 to ensure API connectivity
+    try {
+        $testTicket = Get-CWMTicket -id 1111111
+        New-CWMLog -Type "Info" -Message "API connectivity test successful"
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "API connectivity test failed: $($_.Exception.Message)"
+    }
     Start-Sleep -Seconds 10
 }
