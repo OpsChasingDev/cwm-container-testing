@@ -32,11 +32,11 @@ New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
 $Connection = @{
-    Server = $env:CWM_API_SERVER
-    Company = $env:CWM_API_COMPANY
-    PubKey = $env:CWM_API_PUBLIC_KEY
-    PrivateKey = $env:CWM_API_PRIVATE_KEY
-    ClientId = $env:CWM_API_CLIENT_ID
+    Server = $env:CWM_SERVER
+    Company = $env:CWM_COMPANY
+    PubKey = $env:CWM_PUBLICKEY
+    PrivateKey = $env:CWM_PRIVATEKEY
+    ClientId = $env:CWM_CLIENTID
 }
 try {
     Connect-CWM @Connection
