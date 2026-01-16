@@ -1,13 +1,3 @@
-<#
-.SYNOPSIS
-CWM Shared PowerShell Module
-Contains shared functions and utilities for all CWM container services.
-
-.DESCRIPTION
-This module provides common functionality used across multiple container services
-including logging, data processing, and utility functions.
-#>
-
 function New-CWMLog {
     <#
     .SYNOPSIS
