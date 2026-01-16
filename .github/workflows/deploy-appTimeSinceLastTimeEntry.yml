@@ -38,8 +38,8 @@ jobs:
           file: ./services/appTimeSinceLastTimeEntry/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-appTimeSinceLastTimeEntry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-appTimeSinceLastTimeEntry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -67,7 +67,7 @@ jobs:
             containers:
             - name: appTimeSinceLastTimeEntry
               properties:
-                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-appTimeSinceLastTimeEntry:$IMAGE_TAG
+                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-apptimesincetimeentry:$IMAGE_TAG
                 resources:
                   requests:
                     cpu: 0.5
