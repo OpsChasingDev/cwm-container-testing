@@ -83,11 +83,11 @@ function Initialize-CWMApp {
 
 function Connect-CWMAPI {
     $Connection = @{
-        Server = $env:CWM_API_SERVER
-        Company = $env:CWM_API_COMPANY
-        PubKey = $env:CWM_API_PUBLIC_KEY
-        PrivateKey = $env:CWM_API_PRIVATE_KEY
-        ClientId = $env:CWM_API_CLIENT_ID
+        Server     = $env:CWM_Server
+        Company    = $env:CWM_Company
+        PubKey     = $env:CWM_PublicKey
+        PrivateKey = $env:CWM_PrivateKey
+        ClientId   = $env:CWM_ClientID
     }
     try {
         $api = Connect-CWM @Connection
