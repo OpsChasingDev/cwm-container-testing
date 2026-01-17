@@ -96,13 +96,13 @@ jobs:
       - name: Verify API dependencies and credentials
         run: |
           docker build -f ./services/app1/Dockerfile -t cwm-app1:test .
-          docker run --rm \
+          docker run --rm --entrypoint pwsh \
             -e CWM_Server='${{ secrets.CWM_SERVER }}' \
             -e CWM_Company='${{ secrets.CWM_COMPANY }}' \
             -e CWM_PublicKey='${{ secrets.CWM_PUBLICKEY }}' \
             -e CWM_PrivateKey='${{ secrets.CWM_PRIVATEKEY }}' \
             -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
-            cwm-app1:test pwsh -Command '
+            cwm-app1:test -Command '
               try {
                 # Install ConnectWiseManageAPI module from PSGallery
                 Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop -SkipPublisherCheck | Out-Null
