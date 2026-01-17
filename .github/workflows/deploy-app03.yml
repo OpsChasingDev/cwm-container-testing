@@ -73,6 +73,49 @@ jobs:
             Write-Host "Required files: OK"
           '
 
+      - name: Verify required environment variables in deployment
+        run: |
+          pwsh -Command '
+            $deploymentFile = "./.github/workflows/deploy-app03.yml"
+            $requiredVars = @("CWM_CLIENTID", "CWM_COMPANY", "CWM_PRIVATEKEY", "CWM_PUBLICKEY", "CWM_SERVER")
+            $content = Get-Content $deploymentFile -Raw
+            $missing = @()
+            foreach ($var in $requiredVars) {
+              if ($content -notmatch "name: $var") {
+                $missing += $var
+              }
+            }
+            if ($missing) {
+              Write-Host "ERROR: Missing environment variable definitions:"
+              $missing | ForEach-Object { Write-Host "  - $_" }
+              exit 1
+            }
+            Write-Host "Environment variables: OK - All required variables defined in deployment"
+          '
+
+      - name: Test shared storage mount path handling
+        run: |
+          docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
+          # Create a test mount point and run container with it mounted
+          mkdir -p /tmp/cwm-test-mount
+          CONTAINER_ID=$(docker run -d --rm -v /tmp/cwm-test-mount:/mnt/cwm-data cwm-app03:test pwsh -Command 'Start-Sleep -Seconds 3')
+          sleep 4
+          LOGS=$(docker logs $CONTAINER_ID 2>&1)
+          echo "$LOGS"
+          # Verify that the data path was created
+          if [ -d "/tmp/cwm-test-mount/app03" ]; then
+            echo "Shared storage: OK - Data directory created successfully"
+            docker stop $CONTAINER_ID 2>/dev/null || true
+          else
+            echo "ERROR: Data directory not created at /mnt/cwm-data/app03"
+            echo "Container logs:"
+            echo "$LOGS"
+            docker stop $CONTAINER_ID 2>/dev/null || true
+            rm -rf /tmp/cwm-test-mount
+            exit 1
+          fi
+          rm -rf /tmp/cwm-test-mount
+
       - name: Test container startup
         run: |
           docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
