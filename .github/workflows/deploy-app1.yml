@@ -11,7 +11,86 @@ on:
       - '.github/workflows/deploy-app1.yml'
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell modules
+        run: |
+          pwsh -Command '
+            $errors = @()
+            try {
+              Import-Module ./shared/modules/CWMShared.psm1 -Force
+              $requiredFunctions = @("New-CWMLog", "Initialize-CWMApp")
+              foreach ($func in $requiredFunctions) {
+                if (-not (Get-Command $func -ErrorAction SilentlyContinue)) {
+                  $errors += "Function $func not found"
+                }
+              }
+              Write-Host "Module validation: OK"
+            } catch {
+              $errors += "Failed to import module: $_"
+            }
+            if ($errors) {
+              $errors | ForEach-Object { Write-Host "ERROR: $_" }
+              exit 1
+            }
+          '
+
+      - name: Check app1 script syntax
+        run: |
+          pwsh -Command '
+            $script = "./services/app1/app.ps1"
+            try {
+              [System.Management.Automation.PSParser]::Tokenize((Get-Content $script), [ref]$null) | Out-Null
+              Write-Host "Script syntax: OK - $script"
+            } catch {
+              Write-Host "Syntax error in $script : $_"
+              exit 1
+            }
+          '
+
+      - name: Validate required files
+        run: |
+          pwsh -Command '
+            $required = @(
+              "services/app1/Dockerfile",
+              "services/app1/app.ps1",
+              "shared/modules/CWMShared.psm1"
+            )
+            $missing = @()
+            foreach ($file in $required) {
+              if (-not (Test-Path $file)) {
+                $missing += $file
+              }
+            }
+            if ($missing) {
+              $missing | ForEach-Object { Write-Host "Missing: $_" }
+              exit 1
+            }
+            Write-Host "Required files: OK"
+          '
+
+      - name: Test container startup
+        run: |
+          docker build -f ./services/app1/Dockerfile -t cwm-app1:test .
+          CONTAINER_ID=$(docker run -d --rm cwm-app1:test pwsh -Command 'Start-Sleep -Seconds 3')
+          sleep 4
+          LOGS=$(docker logs $CONTAINER_ID 2>&1)
+          echo "$LOGS"
+          if echo "$LOGS" | grep -q "Initializing app"; then
+            echo "Container startup: OK"
+            docker stop $CONTAINER_ID 2>/dev/null || true
+          else
+            echo "ERROR: Container did not start properly"
+            docker stop $CONTAINER_ID 2>/dev/null || true
+            exit 1
+          fi
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
