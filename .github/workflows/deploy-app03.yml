@@ -96,7 +96,7 @@ jobs:
       - name: Test CWM API authentication
         run: |
           docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
-          CONTAINER_ID=$(docker run -d --rm \
+          docker run --rm \
             -e CWM_Server='${{ secrets.CWM_SERVER }}' \
             -e CWM_Company='${{ secrets.CWM_COMPANY }}' \
             -e CWM_PublicKey='${{ secrets.CWM_PUBLICKEY }}' \
@@ -104,13 +104,28 @@ jobs:
             -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
             cwm-app03:test pwsh -Command '
               try {
+                Write-Host "Starting CWM API authentication test..."
+                
                 # Install ConnectWiseManageAPI module from PSGallery
-                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop
+                Write-Host "Installing ConnectWiseManageAPI module..."
+                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop -SkipPublisherCheck
+                Write-Host "Module installed successfully"
                 
                 # Import the shared module
+                Write-Host "Importing CWMShared module..."
                 Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
+                Write-Host "CWMShared module imported"
+                
+                # Verify environment variables exist
+                Write-Host "Verifying environment variables..."
+                Write-Host "CWM_Server: $($env:CWM_Server)"
+                Write-Host "CWM_Company: $($env:CWM_Company)"
+                Write-Host "CWM_PublicKey: $($if($env:CWM_PublicKey){"[SET]"}else{"[NOT SET]"})"
+                Write-Host "CWM_PrivateKey: $($if($env:CWM_PrivateKey){"[SET]"}else{"[NOT SET]"})"
+                Write-Host "CWM_ClientID: $($env:CWM_ClientID)"
                 
                 # Test API authentication using Connect-CWMAPI
+                Write-Host "Attempting to connect to CWM API..."
                 $api = Connect-CWMAPI
                 if ($api) {
                   Write-Host "CWM API authentication: OK - Connected to API"
@@ -120,21 +135,11 @@ jobs:
                   exit 1
                 }
               } catch {
-                Write-Host "CWM API authentication error: $_"
+                Write-Host "CWM API authentication error: $($_.Exception.Message)"
+                Write-Host "Full error: $_"
                 exit 1
               }
             '
-          )
-          sleep 3
-          LOGS=$(docker logs $CONTAINER_ID 2>&1)
-          echo "$LOGS"
-          docker stop $CONTAINER_ID 2>/dev/null || true
-          if echo "$LOGS" | grep -q "CWM API authentication: OK"; then
-            echo "API test passed"
-          else
-            echo "API test failed"
-            exit 1
-          fi
 
       - name: Test container startup
         run: |
