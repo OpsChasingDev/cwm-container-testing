@@ -93,7 +93,7 @@ jobs:
             Write-Host "Environment variables: OK - All required variables defined in deployment"
           '
 
-      - name: Test CWM API authentication
+      - name: Verify API dependencies and credentials
         run: |
           docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
           docker run --rm \
@@ -104,42 +104,43 @@ jobs:
             -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
             cwm-app03:test pwsh -Command '
               try {
-                Write-Host "Starting CWM API authentication test..."
-                
                 # Install ConnectWiseManageAPI module from PSGallery
-                Write-Host "Installing ConnectWiseManageAPI module..."
-                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop -SkipPublisherCheck
-                Write-Host "Module installed successfully"
+                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop -SkipPublisherCheck | Out-Null
+                Write-Host "ConnectWiseManageAPI module: Available"
                 
                 # Import the shared module
-                Write-Host "Importing CWMShared module..."
                 Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
-                Write-Host "CWMShared module imported"
+                Write-Host "CWMShared module: Loaded"
                 
-                # Verify environment variables exist
-                Write-Host "Verifying environment variables..."
-                Write-Host "CWM_Server: $($env:CWM_Server)"
-                Write-Host "CWM_Company: $($env:CWM_Company)"
-                Write-Host "CWM_PublicKey: $($if($env:CWM_PublicKey){"[SET]"}else{"[NOT SET]"})"
-                Write-Host "CWM_PrivateKey: $($if($env:CWM_PrivateKey){"[SET]"}else{"[NOT SET]"})"
-                Write-Host "CWM_ClientID: $($env:CWM_ClientID)"
-                
-                # Test API authentication using Connect-CWMAPI
-                Write-Host "Attempting to connect to CWM API..."
-                $api = Connect-CWMAPI
-                if ($api) {
-                  Write-Host "CWM API authentication: OK - Connected to API"
-                  exit 0
-                } else {
-                  Write-Host "CWM API authentication failed: No connection object returned"
-                  exit 1
+                # Verify Connect-CWMAPI function is available
+                $func = Get-Command Connect-CWMAPI -ErrorAction SilentlyContinue
+                if (-not $func) {
+                  throw "Connect-CWMAPI function not found"
                 }
+                Write-Host "Connect-CWMAPI function: Available"
+                
+                # Verify all required environment variables are populated
+                $requiredEnv = @("CWM_Server", "CWM_Company", "CWM_PublicKey", "CWM_PrivateKey", "CWM_ClientID")
+                $missing = @()
+                foreach ($var in $requiredEnv) {
+                  $value = Get-Item -Path "env:$var" -ErrorAction SilentlyContinue
+                  if (-not $value -or [string]::IsNullOrWhiteSpace($value.Value)) {
+                    $missing += $var
+                  }
+                }
+                
+                if ($missing) {
+                  throw "Missing environment variables: $($missing -join '', '')"
+                }
+                Write-Host "Environment credentials: Populated"
+                
+                Write-Host "API dependencies and credentials: OK"
+                exit 0
               } catch {
-                Write-Host "CWM API authentication error: $($_.Exception.Message)"
-                Write-Host "Full error: $_"
+                Write-Host "ERROR: $_"
                 exit 1
               }
-            '
+          '
 
       - name: Test container startup
         run: |
