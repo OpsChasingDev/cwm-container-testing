@@ -103,11 +103,17 @@ jobs:
             -e CWM_PrivateKey='${{ secrets.CWM_PRIVATEKEY }}' \
             -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
             cwm-app03:test pwsh -Command '
-              Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
               try {
+                # Install ConnectWiseManageAPI module from PSGallery
+                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop
+                
+                # Import the shared module
+                Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
+                
+                # Test API authentication using Connect-CWMAPI
                 $api = Connect-CWMAPI
                 if ($api) {
-                  Write-Host "CWM API authentication: OK"
+                  Write-Host "CWM API authentication: OK - Connected to API"
                   exit 0
                 } else {
                   Write-Host "CWM API authentication failed: No connection object returned"
