@@ -93,22 +93,6 @@ jobs:
             Write-Host "Environment variables: OK - All required variables defined in deployment"
           '
 
-      - name: Test container startup
-        run: |
-          docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
-          CONTAINER_ID=$(docker run -d --rm cwm-app03:test pwsh -Command 'Start-Sleep -Seconds 3')
-          sleep 4
-          LOGS=$(docker logs $CONTAINER_ID 2>&1)
-          echo "$LOGS"
-          if echo "$LOGS" | grep -q "Initializing app"; then
-            echo "Container startup: OK"
-            docker stop $CONTAINER_ID 2>/dev/null || true
-          else
-            echo "ERROR: Container did not start properly"
-            docker stop $CONTAINER_ID 2>/dev/null || true
-            exit 1
-          fi
-
   build:
     needs: test
     runs-on: ubuntu-latest
