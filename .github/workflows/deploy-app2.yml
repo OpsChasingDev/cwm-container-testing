@@ -93,6 +93,43 @@ jobs:
             Write-Host "Environment variables: OK - All required variables defined in deployment"
           '
 
+      - name: Test CWM API authentication
+        run: |
+          docker build -f ./services/app2/Dockerfile -t cwm-app2:test .
+          CONTAINER_ID=$(docker run -d --rm \
+            -e CWM_Server='${{ secrets.CWM_SERVER }}' \
+            -e CWM_Company='${{ secrets.CWM_COMPANY }}' \
+            -e CWM_PublicKey='${{ secrets.CWM_PUBLICKEY }}' \
+            -e CWM_PrivateKey='${{ secrets.CWM_PRIVATEKEY }}' \
+            -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
+            cwm-app2:test pwsh -Command '
+              Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
+              try {
+                $api = Connect-CWMAPI
+                if ($api) {
+                  Write-Host "CWM API authentication: OK"
+                  exit 0
+                } else {
+                  Write-Host "CWM API authentication failed: No connection object returned"
+                  exit 1
+                }
+              } catch {
+                Write-Host "CWM API authentication error: $_"
+                exit 1
+              }
+            '
+          )
+          sleep 3
+          LOGS=$(docker logs $CONTAINER_ID 2>&1)
+          echo "$LOGS"
+          docker stop $CONTAINER_ID 2>/dev/null || true
+          if echo "$LOGS" | grep -q "CWM API authentication: OK"; then
+            echo "API test passed"
+          else
+            echo "API test failed"
+            exit 1
+          fi
+
       - name: Test container startup
         run: |
           docker build -f ./services/app2/Dockerfile -t cwm-app2:test .
