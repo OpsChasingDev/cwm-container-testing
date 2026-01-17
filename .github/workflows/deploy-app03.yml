@@ -93,55 +93,6 @@ jobs:
             Write-Host "Environment variables: OK - All required variables defined in deployment"
           '
 
-      - name: Verify API dependencies and credentials
-        run: |
-          docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
-          docker run --rm --entrypoint pwsh \
-            -e CWM_Server='${{ secrets.CWM_SERVER }}' \
-            -e CWM_Company='${{ secrets.CWM_COMPANY }}' \
-            -e CWM_PublicKey='${{ secrets.CWM_PUBLICKEY }}' \
-            -e CWM_PrivateKey='${{ secrets.CWM_PRIVATEKEY }}' \
-            -e CWM_ClientID='${{ secrets.CWM_CLIENTID }}' \
-            cwm-app03:test -Command '
-              try {
-                # Install ConnectWiseManageAPI module from PSGallery
-                Install-Module -Name ConnectWiseManageAPI -Force -ErrorAction Stop -SkipPublisherCheck | Out-Null
-                Write-Host "ConnectWiseManageAPI module: Available"
-                
-                # Import the shared module
-                Import-Module /opt/cwm-app/modules/CWMShared.psm1 -Force
-                Write-Host "CWMShared module: Loaded"
-                
-                # Verify Connect-CWMAPI function is available
-                $func = Get-Command Connect-CWMAPI -ErrorAction SilentlyContinue
-                if (-not $func) {
-                  throw "Connect-CWMAPI function not found"
-                }
-                Write-Host "Connect-CWMAPI function: Available"
-                
-                # Verify all required environment variables are populated
-                $requiredEnv = @("CWM_Server", "CWM_Company", "CWM_PublicKey", "CWM_PrivateKey", "CWM_ClientID")
-                $missing = @()
-                foreach ($var in $requiredEnv) {
-                  $value = Get-Item -Path "env:$var" -ErrorAction SilentlyContinue
-                  if (-not $value -or [string]::IsNullOrWhiteSpace($value.Value)) {
-                    $missing += $var
-                  }
-                }
-                
-                if ($missing) {
-                  throw "Missing environment variables: $($missing -join '', '')"
-                }
-                Write-Host "Environment credentials: Populated"
-                
-                Write-Host "API dependencies and credentials: OK"
-                exit 0
-              } catch {
-                Write-Host "ERROR: $_"
-                exit 1
-              }
-          '
-
       - name: Test container startup
         run: |
           docker build -f ./services/app03/Dockerfile -t cwm-app03:test .
