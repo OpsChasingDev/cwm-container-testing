@@ -135,6 +135,7 @@ jobs:
           CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-app03' || 'cwm-staging-app03' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
+          LOGGING_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-logging' || 'cwm-staging-shared-logging' }}
           
           cat > /tmp/aci-app03-deployment.yaml << EOF
           apiVersion: '2021-09-01'
@@ -145,6 +146,11 @@ jobs:
             - name: cwm-shared-data
               azureFile:
                 shareName: $SHARE_NAME
+                storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+                storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+            - name: cwm-shared-logging
+              azureFile:
+                shareName: $LOGGING_SHARE_NAME
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
@@ -173,6 +179,8 @@ jobs:
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
+                  - name: cwm-shared-logging
+                    mountPath: /mnt/cwm-logs
             osType: Linux
             imageRegistryCredentials:
             - server: ${{ secrets.ACR_LOGIN_SERVER }}
