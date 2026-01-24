@@ -6,6 +6,9 @@ function New-CWMLog {
     .DESCRIPTION
     Outputs a standardized log entry to Write-Host in the format: 
     "MM/dd/yyyy HH:mm:ss || TYPE || Message"
+    
+    Also writes the same log entry to a log file in the cwm-shared-logging volume
+    if the $script:logFilePath variable has been initialized by Initialize-CWMApp.
 
     .PARAMETER Type
     The log level type. Must be one of: "Info", "Warning", or "Error"
@@ -34,27 +37,40 @@ function New-CWMLog {
     $typeUppercase = $Type.ToUpper()
     $logEntry = "$timestamp || $typeUppercase || $Message"
     
+    # Write to console
     Write-Host $logEntry
+    
+    # Write to log file if path is initialized
+    if ($script:logFilePath) {
+        try {
+            Add-Content -Path $script:logFilePath -Value $logEntry -ErrorAction Stop
+        }
+        catch {
+            Write-Host "WARNING: Failed to write to log file: $($_.Exception.Message)"
+        }
+    }
 }
 
 function Initialize-CWMApp {
     <#
     .SYNOPSIS
-    Initializes a CWM application with data path and logging.
+    Initializes a CWM application with data path, logging path, and logging.
 
     .DESCRIPTION
-    Sets up the data directory for the application, creates it if it doesn't exist,
-    and logs the initialization. This function should be called at the start of
-    every CWM application script to ensure consistent setup.
+    Sets up the data directory for the application and the logging file, creates 
+    them if they don't exist, and logs the initialization. This function should be 
+    called at the start of every CWM application script to ensure consistent setup.
 
     .PARAMETER AppName
     The name of the application. Used to create the app-specific data directory
-    at /mnt/cwm-data/<AppName>
+    at /mnt/cwm-data/<AppName> and a timestamped log file at 
+    /mnt/cwm-logs/<AppName>_YYYY-MM-DD_HH-mm-ss.log
 
     .EXAMPLE
     $dataPath = Initialize-CWMApp -AppName "app1"
     Output: 01/16/2026 14:30:45 || INFO || Initializing app: app1
             01/16/2026 14:30:45 || INFO || Data path: /mnt/cwm-data/app1
+            01/16/2026 14:30:45 || INFO || Log file: /mnt/cwm-logs/app1_2026-01-16_14-30-45.log
     #>
     param(
         [Parameter(Mandatory = $true)]
@@ -67,16 +83,47 @@ function Initialize-CWMApp {
     if (-not (Test-Path $script:dataPath)) {
         try {
             New-Item -ItemType Directory -Path $script:dataPath -Force | Out-Null
-            New-CWMLog -Type "Info" -Message "Created data directory: $script:dataPath"
+            Write-Host "Created data directory: $script:dataPath"
         }
         catch {
-            New-CWMLog -Type "Error" -Message "Failed to create data directory: $($_.Exception.Message)"
+            Write-Host "ERROR: Failed to create data directory: $($_.Exception.Message)"
             throw
         }
     }
     
+    # Set up logging
+    $loggingPath = "/mnt/cwm-logs"
+    
+    # Create logging directory if it doesn't exist
+    if (-not (Test-Path $loggingPath)) {
+        try {
+            New-Item -ItemType Directory -Path $loggingPath -Force | Out-Null
+            Write-Host "Created logging directory: $loggingPath"
+        }
+        catch {
+            Write-Host "ERROR: Failed to create logging directory: $($_.Exception.Message)"
+            throw
+        }
+    }
+    
+    # Create log file with timestamp
+    $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+    $script:logFilePath = "$loggingPath/${AppName}_${timestamp}.log"
+    
+    # Create the log file
+    try {
+        New-Item -ItemType File -Path $script:logFilePath -Force | Out-Null
+    }
+    catch {
+        Write-Host "ERROR: Failed to create log file: $($_.Exception.Message)"
+        $script:logFilePath = $null
+        throw
+    }
+    
+    # Now use New-CWMLog for all subsequent messages
     New-CWMLog -Type "Info" -Message "Initializing app: $AppName"
     New-CWMLog -Type "Info" -Message "Data path: $script:dataPath"
+    New-CWMLog -Type "Info" -Message "Log file: $script:logFilePath"
     
     return $script:dataPath
 }
