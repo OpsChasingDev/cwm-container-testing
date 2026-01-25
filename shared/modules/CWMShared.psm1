@@ -146,3 +146,55 @@ function Connect-CWMAPI {
         throw
     }
 }
+
+function Get-CWMTimeSinceLastTimeEntry {
+    <#
+    .SYNOPSIS
+        Proivdes the number of hours since the last time entry was made on a ticket.
+    .DESCRIPTION
+        Proivdes the number of hours since the last time entry was made on a ticket.
+    .EXAMPLE
+        Get-CWMTimeSinceLastTimeEntry -TicketID 1131626 -Verbose
+
+        Output:
+VERBOSE: Current day/time is 05/10/2023 08:20:57
+VERBOSE: Lastest time entry is 05/09/2023 14:39:11
+17.7
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [int]$UTCTimeZone = -5
+    )
+
+    BEGIN {
+        $CurrentDateTime = Get-Date
+    }
+
+    PROCESS {
+        ## get the datetime of the last time entry in the ticket
+        $LatestTimeEntryDateTime = Get-CWMTimeEntry -condition "(chargeToType='ServiceTicket' OR chargeToType='ProjectTicket') AND chargeToId=$TicketID" -all
+        if ($LatestTimeEntryDateTime.count -gt 1) {
+            $LatestTimeEntryDateTime = $LatestTimeEntryDateTime[-1].dateEntered
+        }
+        elseif ($LatestTimeEntryDateTime.count -eq 0) {
+            return $null
+        }
+        else {
+            $LatestTimeEntryDateTime = $LatestTimeEntryDateTime.dateEntered
+        }
+        $LatestTimeEntryDateTime = $LatestTimeEntryDateTime.AddHours($UTCTimeZone)
+
+        Write-Verbose "Current day/time is $CurrentDateTime"
+        Write-Verbose "Lastest time entry is $LatestTimeEntryDateTime"
+
+        $Difference = [math]::Round((($CurrentDateTime - $LatestTimeEntryDateTime).TotalHours), 0)
+        Write-Output $Difference
+    }
+
+    END {}
+}
