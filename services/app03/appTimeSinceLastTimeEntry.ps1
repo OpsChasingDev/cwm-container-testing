@@ -2,6 +2,11 @@ $script:appName = "appTimeSinceLastTimeEntry"
 
 #region SHARED INTITALIZATION
 
+# Initialize the application with data path and logging setup
+$dataPath = Initialize-CWMApp -AppName $script:appName
+New-CWMLog -Type "Info" -Message "Starting $script:appName service"
+New-CWMLog -Type "Info" -Message "Data path: $dataPath"
+
 # Import shared modules
 $modulePath = "/opt/cwm-app/modules/CWMShared.psm1"
 if (Test-Path $modulePath) {
@@ -22,11 +27,6 @@ if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
         New-CWMLog -Type "Error" -Message "Failed to install ConnectWiseManageAPI module: $($_.Exception.Message)"
     }
 }
-
-# Initialize the application with data path and logging setup
-$dataPath = Initialize-CWMApp -AppName $script:appName
-New-CWMLog -Type "Info" -Message "Starting $script:appName service"
-New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Connect to ConnectWise Manage API
 try {
