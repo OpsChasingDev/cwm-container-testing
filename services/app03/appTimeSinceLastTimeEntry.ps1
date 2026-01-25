@@ -2,11 +2,6 @@ $script:appName = "appTimeSinceLastTimeEntry"
 
 #region SHARED INTITALIZATION
 
-# Initialize the application with data path and logging setup
-$dataPath = Initialize-CWMApp -AppName $script:appName
-New-CWMLog -Type "Info" -Message "Starting $script:appName service"
-New-CWMLog -Type "Info" -Message "Data path: $dataPath"
-
 # Import shared modules
 $modulePath = "/opt/cwm-app/modules/CWMShared.psm1"
 if (Test-Path $modulePath) {
@@ -16,6 +11,11 @@ if (Test-Path $modulePath) {
 else {
     Write-Host "ERROR: CWMShared module not found at $modulePath"
 }
+
+# Initialize the application with data path and logging setup
+$dataPath = Initialize-CWMApp -AppName $script:appName
+New-CWMLog -Type "Info" -Message "Starting $script:appName service"
+New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Import ConnectWiseManageAPI module from PowerShell Gallery
 if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
