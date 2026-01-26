@@ -207,6 +207,232 @@ function Connect-CWMAPIUnitTest {
     Remove-Variable client_id -Force -ErrorAction SilentlyContinue
 }
 
+function Construct-CWMCondition {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [ValidateSet("Company", "Board", "Resources")]
+        [string]$Type,
+        
+        [Parameter(Mandatory)]
+        [string[]]$Value
+    )
+
+    # determine the syntax of the key for the query based on -Type
+    switch ($Type) {
+        Company { $Key = "$($Type.ToLower())/name" }
+        Board { $Key = "$($Type.ToLower())/name" }
+        Resources { $Key = "resources" }
+    }
+
+    # logic for Condition creation
+    if ($Value.Count -eq 1) {
+        if ($Type -eq "Resources") { $Condition = "($Key like `"*$Value*`")"}
+        else { $Condition = "($Key = `"$Value`")" }
+    }
+    elseif ($Value.Count -gt 1) {
+        foreach ($v in $Value) {
+            if ($v -eq $Value[0]) {
+                if ($Type -eq "Resources") { $Condition = "($Key like `"*$v*`"" }
+                else { $Condition = "($Key = `"$v`"" }
+                Write-Verbose "Condition is: << $Condition >>"
+            }
+            elseif ($v -eq $Value[-1]) {
+                if ($Type -eq "Resources") { $Condition = $Condition + " OR $Key like `"*$v*`")" }
+                else { $Condition = $Condition + " OR $Key = `"$v`")" }
+                Write-Verbose "Condition is: << $Condition >>"
+            }
+            else {
+                if ($Type -eq "Resources") { $Condition = $Condition + " OR $Key like `"*$v*`"" }
+                else { $Condition = $Condition + " OR $Key = `"$v`"" }
+                Write-Verbose "Condition is: << $Condition >>"
+            }
+        }
+    }
+
+    Write-Output $Condition
+}
+
+function Get-CWMFullTicket {
+    [CmdletBinding(DefaultParameterSetName = "default")]
+    param (
+        [Parameter(ParameterSetName = "condition",
+            Mandatory,
+            Position = 1)]
+        [string]$Condition,
+
+        [Parameter(ParameterSetName = "default")]
+        [string[]]$Company,
+        
+        [Parameter(ParameterSetName = "default")]
+        [string[]]$Board,
+
+        [Parameter(ParameterSetName = "default")]
+        [string[]]$Resource,
+        
+        [Parameter(ParameterSetName = "default")]
+        [Parameter(ParameterSetName = "condition",
+            Position = 2)]
+        [ValidateSet("Closed", "Open", "All")]
+        [string]$ClosedStatus = "Open",
+
+        [Parameter(ParameterSetName = "default")]
+        [Parameter(ParameterSetName = "condition")]
+        [switch]$IncludeChildTicket,
+
+        [Parameter(ParameterSetName = "default")]
+        [Parameter(ParameterSetName = "condition")]
+        [ValidateRange(1, 1000)]
+        [int]$PageSize = 1000
+    )
+
+    # safeguard to prevent querying all tickets while in "default" paramset
+    if ($PSCmdlet.ParameterSetName -eq "default" -and (!$Company -and !$Board -and !$Resource)) {
+        Write-Warning "You must specify a condition-defining parameter in the default parameter set."
+        return
+    }
+
+    # preparations for entry collection, handling 1000+ result per page by default
+    [System.Collections.ArrayList]$ResultCol = @()
+    $CurrentPage = 1
+
+    # logic for Resource param
+    if ($Resource) {
+        $ResourceCondition = Construct-CWMCondition -Type Resources -Value $Resource
+        if ($Condition) {
+            $Condition = $Condition + " AND " + $ResourceCondition
+            Write-Verbose "Condition is: << $Condition >>"
+        }
+        elseif (!$Condition) {
+            $Condition = $ResourceCondition
+        }
+    }
+
+    # logic for Company param
+    if ($Company) {
+        $CompanyCondition = Construct-CWMCondition -Type Company -Value $Company
+        if ($Condition) {
+            $Condition = $Condition + " AND " + $CompanyCondition
+            Write-Verbose "Condition is: << $Condition >>"
+        }
+        elseif (!$Condition) {
+            $Condition = $CompanyCondition
+        }
+    }
+    
+    # logic for Board param
+    if ($Board) {
+        $BoardCondition = Construct-CWMCondition -Type Board -Value $Board
+        if ($Condition) {
+            $Condition = $Condition + " AND " + $BoardCondition
+            Write-Verbose "Condition is: << $Condition >>"
+        }
+        elseif (!$Condition) {
+            $Condition = $BoardCondition
+        }
+    }
+
+    # set parenthesis around -Condition value if in the condition paramset
+    if ($PSCmdlet.ParameterSetName -eq "condition") {
+        $Condition = $Condition.Insert(0, "(")
+        $Condition = $Condition.Insert($Condition.Length, ")")
+        Write-Verbose "Condition is: << $Condition >>"
+    }
+
+    # logic for ClosedStatus param
+    if ($ClosedStatus -eq "Open") {
+        $Condition = $Condition.Insert(($Condition.Length), " AND closedFlag = False")
+        Write-Verbose "Condition is: << $Condition >>"
+    }
+    elseif ($ClosedStatus -eq "Closed") {
+        $Condition = $Condition.Insert(($Condition.Length), " AND closedFlag = True")
+        Write-Verbose "Condition is: << $Condition >>"
+    }
+    else {}
+
+    # loop to iterate through pages of ticket results until no more exist
+    do {
+        $ResultCount = 0
+        $CWMTicketSplat = @{
+            page      = $CurrentPage
+            pageSize  = $PageSize
+            condition = $Condition
+        }
+        # adds each ticket to the output collection, by default excludes child tickets
+        $null = Get-CWMTicket @CWMTicketSplat |
+        ForEach-Object {
+            if (!$_.parentTicketId -or $IncludeChildTicket) {
+                $ResultCol.Add($_)
+            }
+            $ResultCount++
+        }
+        $CurrentPage++
+    } while ($ResultCount -eq $PageSize)
+
+    Write-Output $ResultCol
+}
+
+function Get-CWMFullAuditTrail {
+    <#
+    .SYNOPSIS
+        Wrapper function for getting all the Ticket type audit trail entries for a ticket.
+    .DESCRIPTION
+        Wrapper function for getting all the Ticket type audit trail entries for a ticket.
+        This function circumnavigates the CWM REST API limitation of 1000 results per query by looping requests of a page size no greater than 1000 until there are no more audit trail entries to return.
+        The default page result size is 1000, but can be set no higher.  Best performance will come from leaving this default.
+        Results gathered will be returned chronologically in ascending order.
+    .NOTES
+        You must first be connected to a CWM system in order to use this function.
+        Date/time information will be returned in UTC, so adjust results accordingly based on your region and use case.
+    .EXAMPLE
+        PS C:\git\ConnectWise_Manage> (Get-CWMFullAuditTrail -TicketID 1020834 | select enteredDate).count
+2141
+        PS C:\git\ConnectWise_Manage> (Measure-Command { (Get-CWMFullAuditTrail -TicketID 1020834).count }).TotalSeconds
+1.9232057
+        
+        The first command returns the number of total audit trail entries for the ticket.
+        The second command measures how long it took to run the first command, returned in the total number of seconds elapsed.
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [ValidateRange(1, 1000)]
+        [int]$PageSize = 1000
+    )
+
+    BEGIN {}
+
+    PROCESS {
+        [System.Collections.ArrayList]$ResultCol = @()
+        $CurrentPage = 1
+
+        # loop to iterate through pages of audit trail results until no more exist
+        do {
+            $ResultCount = 0
+            $AuditTrailSplat = @{
+                id       = $TicketID
+                type     = "Ticket"
+                page     = $CurrentPage
+                pageSize = $PageSize
+            }
+            $null = Get-CWMAuditTrail @AuditTrailSplat |
+            ForEach-Object {
+                $ResultCol.Add($_)
+                $ResultCount++
+            }
+            $CurrentPage++
+        } while ($ResultCount -eq $PageSize)
+
+        Write-Output $ResultCol
+    }
+    
+    END {}
+}
+
 function Get-CWMTimeSinceLastTimeEntry {
     <#
     .SYNOPSIS
