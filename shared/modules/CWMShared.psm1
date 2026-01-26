@@ -156,6 +156,57 @@ function Connect-CWMAPI {
 #region HELPER Functions
 ########################################
 
+function Connect-CWMAPIUnitTest {
+    # ensure the presence of ConnectWiseManageAPI module
+    Import-Module 'ConnectWiseManageAPI' -Force -ErrorAction SilentlyContinue
+    $ModuleCheck = Get-Module -Name 'ConnectWiseManageAPI'
+    if (!$ModuleCheck) {
+        do {
+            $Confirm = Read-Host "You do not have the ConnectWiseManageAPI PowerShell module installed or imported.  Would you like to do so now? (y/n)"
+            if ($Confirm -eq 'y') {
+                Install-Module ConnectWiseManageAPI -Force
+                Import-Module ConnectWiseManageAPI -Force
+            }
+            elseif ($Confirm -eq 'n') {
+                return
+            }
+        } while ($Confirm -ne 'y' -and $Confirm -ne 'n')
+    }
+    
+    # private server info
+    $server = Read-Host "Enter ConnectWise Manage server"
+    $company = Read-Host "Enter ConnectWise Manage company name"
+    $public_key = Read-Host "Enter public key (secure)" -MaskInput
+    $private_key = Read-Host "Enter private key (secure)" -MaskInput
+    $client_id = Read-Host "Enter ClientId (secure)" -MaskInput
+    
+    # connection info setup
+    $Connection = @{
+        Server = $server
+        Company = $company
+        PubKey = $public_key
+        PrivateKey = $private_key
+        ClientId = $client_id
+    }
+    
+    # connection confirmation
+    $ConnectionConfirm = Read-Host "Confirm you want to connect (y/n)"
+    if ($ConnectionConfirm -eq 'y') {
+        Connect-CWM @Connection -Verbose
+    }
+    else {
+        Write-Host "No connection made."
+    }
+    
+    # remove connection setup info from memory
+    Remove-Variable Connection -Force -ErrorAction SilentlyContinue
+    Remove-Variable server -Force -ErrorAction SilentlyContinue
+    Remove-Variable company -Force -ErrorAction SilentlyContinue
+    Remove-Variable public_key -Force -ErrorAction SilentlyContinue
+    Remove-Variable private_key -Force -ErrorAction SilentlyContinue
+    Remove-Variable client_id -Force -ErrorAction SilentlyContinue
+}
+
 function Get-CWMTimeSinceLastTimeEntry {
     <#
     .SYNOPSIS
