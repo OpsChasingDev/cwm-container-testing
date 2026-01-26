@@ -41,11 +41,29 @@ catch {
 
 # Main loop
 
-while ($true) { 
-    $Id = (Get-CWMFullTicket -Board "After Hours", "Build Team", "Dispatch", "Escalations", "Field Services", "Onboarding", "Staff Aug", "Team 1", "Team 2" -ErrorAction Stop).id
-    $Id | New-CWMTimeSinceLastTimeEntryReport
-        -CSVPath "$dataPath/appTimeSinceLastTimeEntry.csv"
-        -HTMLPath "$dataPath/appTimeSinceLastTimeEntry.html"
-        -ItemsToDisplay 500
+while ($true) {
+
+    # Retrieve all ticket IDs from specified boards
+    try {
+        $Id = (Get-CWMFullTicket -Board "After Hours", "Build Team", "Dispatch", "Escalations", "Field Services", "Onboarding", "Staff Aug", "Team 1", "Team 2" -ErrorAction Stop).id
+        New-CWMLog -Type "Info" -Message "Retrieved $($Id.Count) tickets from specified boards"
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to retrieve tickets: $($_.Exception.Message)"
+    }
+
+    # Generate time since last time entry report
+    try {
+        $Id | New-CWMTimeSinceLastTimeEntryReport `
+            -CSVPath "$dataPath/appTimeSinceLastTimeEntry.csv" `
+            -HTMLPath "$dataPath/appTimeSinceLastTimeEntry.html" `
+            -ItemsToDisplay 500
+        New-CWMLog -Type "Info" -Message "Generated time since last time entry report"
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
+    }
+
+    # Wait for 2 minutes before next iteration
     Start-Sleep -Seconds 120
 }
