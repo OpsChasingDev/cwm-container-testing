@@ -1,45 +1,10 @@
 # cwm-container-testing
 
-Docker container with PowerShell Core and git that generates timestamped files.
+I'll add stuff here later.
 
-## Features
+## Unit Testing
 
-- Lightweight Linux container based on PowerShell 7.4 (Debian)
-- PowerShell Core and git pre-installed
-- Automatically creates timestamped files every 5 seconds in `/opt/cwm-app/bin`
-
-## Building the Container
-
-```bash
-docker build -t cwm-container-test .
-```
-
-## Running the Container
-
-```bash
-docker run -d --name cwm-test cwm-container-test
-```
-
-## Viewing Generated Files
-
-```bash
-docker exec cwm-test ls -la /opt/cwm-app/bin/
-```
-
-## Viewing Container Logs
-
-```bash
-docker logs cwm-test
-```
-
-## Stopping and Removing the Container
-
-```bash
-docker stop cwm-test
-docker rm cwm-test
-```
-
-## Files
-
-- **Dockerfile**: Container configuration with PowerShell Core and git
-- **app.ps1**: PowerShell script that runs inside the container and generates timestamped files every 5 seconds
+- Import ConnectWiseManageAPI from PSGallery
+- Import ../shared/modules/CWMShared.psm1
+- Authenticate to CWM REST API
+- Run portion of the app script which performs the primary job (each app's initialization .ps1 script is configured to run in the container with the correct environment configuration, but each job script and functions called therein are designed to run outside of this environment with the above requirements met)
