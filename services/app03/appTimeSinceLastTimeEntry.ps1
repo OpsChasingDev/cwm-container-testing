@@ -45,7 +45,7 @@ while ($true) {
 
     # Retrieve all ticket IDs from specified boards
     try {
-        $Id = (Get-CWMFullTicket -Board "After Hours", "Build Team", "Dispatch", "Escalations", "Field Services", "Onboarding", "Staff Aug", "Team 1", "Team 2" -ErrorAction Stop).id
+        $Id = (Get-CWMFullTicket -Board "After Hours", "Build Team", "Cloud", "Dispatch", "Escalations", "Field Services", "Onboarding", "Staff Aug", "Team 1", "Team 2" -ErrorAction Stop).id
         New-CWMLog -Type "Info" -Message "Retrieved $($Id.Count) tickets from specified boards"
     }
     catch {
@@ -57,7 +57,7 @@ while ($true) {
         $Id | New-CWMTimeSinceLastTimeEntryReport `
             -CSVPath "$dataPath/appTimeSinceLastTimeEntry.csv" `
             -HTMLPath "$dataPath/appTimeSinceLastTimeEntry.html" `
-            -ItemsToDisplay 500
+            -ItemsToDisplay 1000
         New-CWMLog -Type "Info" -Message "Generated time since last time entry report"
     }
     catch {
