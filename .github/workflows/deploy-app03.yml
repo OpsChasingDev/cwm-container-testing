@@ -176,6 +176,8 @@ jobs:
                     value: ${{ secrets.CWM_PUBLICKEY }}
                   - name: CWM_Server
                     value: ${{ secrets.CWM_SERVER }}
+                  - name: TICKETING_BOARDS
+                    value: ${{ vars.TICKETING_BOARDS }}
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
