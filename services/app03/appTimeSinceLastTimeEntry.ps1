@@ -12,8 +12,9 @@ else {
     Write-Host "ERROR: CWMShared module not found at $modulePath"
 }
 
-# Initialize the application with data path and logging setup
+# Initialize the application with data path, environment variables, and logging setup
 $dataPath = Initialize-CWMApp -AppName $script:appName
+$boardsEnv = $env:TICKETING_BOARDS -split ","
 New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
@@ -45,7 +46,7 @@ while ($true) {
 
     # Retrieve all ticket IDs from specified boards
     try {
-        $Id = (Get-CWMFullTicket -Board ($env:TICKETING_BOARDS -split ",") -ErrorAction Stop).id
+        $Id = (Get-CWMFullTicket -Board $boardsEnv -ErrorAction Stop).id
         New-CWMLog -Type "Info" -Message "Retrieved $($Id.Count) tickets from specified boards"
     }
     catch {
