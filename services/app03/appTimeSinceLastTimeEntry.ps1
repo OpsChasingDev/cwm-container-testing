@@ -60,11 +60,12 @@ while ($true) {
 
     # Generate time since last time entry report
     try {
+        New-CWMLog -Type "Info" -Message "Generating report..."
         $Id | New-CWMTimeSinceLastTimeEntryReport `
             -CSVPath "$dataPath/appTimeSinceLastTimeEntry.csv" `
             -HTMLPath "$dataPath/appTimeSinceLastTimeEntry.html" `
             -ItemsToDisplay 1000
-        New-CWMLog -Type "Info" -Message "Generated time since last time entry report"
+        New-CWMLog -Type "Info" -Message "Completed report"
     }
     catch {
         New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
