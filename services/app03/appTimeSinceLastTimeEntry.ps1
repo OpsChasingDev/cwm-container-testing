@@ -39,7 +39,7 @@ catch {
 
 #endregion SHARED INTITALIZATION
 
-New-CWMLog -Type "Info" -Message "Starting $script:appName service"
+New-CWMLog -Type "Info" -Message "STARTING $($script:appName.ToUpper()) SERVICE"
 while ($true) {
     $Start = Get-Date
     New-CWMLog -Type "Info" -Message "Starting new iteration of $script:appName"
