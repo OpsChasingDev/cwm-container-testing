@@ -1,6 +1,7 @@
-#region SHARED INTITALIZATION
-
 $script:appName = "appTimeSinceLastTimeEntry"
+$FrequencyMinutes = 2
+
+#region SHARED INTITALIZATION
 
 # Import shared modules
 $modulePath = "/opt/cwm-app/modules/CWMShared.psm1"
@@ -40,9 +41,13 @@ catch {
 
 #endregion SHARED INTITALIZATION
 
-# Main loop
-
 while ($true) {
+    $Start = Get-Date
+    New-CWMLog -Type "Info" -Message "Starting new iteration of $script:appName"
+
+    ##########################
+    #region APP SPECIFIC LOGIC
+    ##########################
 
     # Retrieve all ticket IDs from specified boards
     try {
@@ -65,6 +70,21 @@ while ($true) {
         New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
     }
 
-    # Wait for 2 minutes before next iteration
-    Start-Sleep -Seconds 120
+    #############################
+    #endregion APP SPECIFIC LOGIC
+    #############################
+
+    #region App Iteration Handler
+    $FrequencyMilliseconds = $FrequencyMinutes * 60 * 1000
+    $End = Get-Date
+    $OperationTime = ($End - $Start).TotalMilliseconds
+    $RemainderDelay = $FrequencyMilliseconds - $OperationTime
+    if ($RemainderDelay -gt 0) {
+        New-CWMLog -Type "Info" -Message "Iteration completed in $([math]::Round($OperationTime / 1000, 2)) seconds. Sleeping for $([math]::Round($RemainderDelay / 1000, 2)) seconds."
+        Start-Sleep -Milliseconds $RemainderDelay
+    }
+    else {
+        New-CWMLog -Type "Warning" -Message "Iteration took longer ($([math]::Round($OperationTime / 1000, 2)) seconds) than the configured frequency of $FrequencyMinutes minutes. Starting next iteration immediately."
+    }
+    #endregion App Iteration Handler
 }
