@@ -16,8 +16,6 @@ else {
 # Initialize the application with data path, environment variables, and logging setup
 $dataPath = Initialize-CWMApp -AppName $script:appName
 $boardsEnv = $env:TICKETING_BOARDS -split ","
-New-CWMLog -Type "Info" -Message "Starting $script:appName service"
-New-CWMLog -Type "Info" -Message "Data path: $dataPath"
 
 # Import ConnectWiseManageAPI module from PowerShell Gallery
 if (-not (Get-Module -ListAvailable -Name ConnectWiseManageAPI)) {
@@ -41,6 +39,7 @@ catch {
 
 #endregion SHARED INTITALIZATION
 
+New-CWMLog -Type "Info" -Message "Starting $script:appName service"
 while ($true) {
     $Start = Get-Date
     New-CWMLog -Type "Info" -Message "Starting new iteration of $script:appName"
