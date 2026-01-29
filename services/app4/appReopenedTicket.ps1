@@ -48,7 +48,26 @@ while ($true) {
     #region APP SPECIFIC LOGIC
     ##########################
 
-    # INSERT APP LOGIC HERE
+    # Retrieve all ticket IDs from specified boards
+    try {
+        $Id = (Get-CWMFullTicket -Board $boardsEnv -ErrorAction Stop).id
+        New-CWMLog -Type "Info" -Message "Retrieved $($Id.Count) tickets from specified boards"
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to retrieve tickets: $($_.Exception.Message)"
+    }
+
+    # Generate reopened ticket report
+    try {
+        New-CWMLog -Type "Info" -Message "Generating report..."
+        $Id | New-CWMReopenedTicketReport `
+            -CSVPath "$dataPath/appReopenedTicket.csv" `
+            -HTMLPath "$dataPath/appReopenedTicket.html"
+        New-CWMLog -Type "Info" -Message "Completed report"
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
+    }
 
     #############################
     #endregion APP SPECIFIC LOGIC
