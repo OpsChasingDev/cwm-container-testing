@@ -485,6 +485,115 @@ VERBOSE: Lastest time entry is 05/09/2023 14:39:11
     END {}
 }
 
+function Get-CWMReopenedTicketStatistics {
+    <#
+    .SYNOPSIS
+        Returns information on a ticket reopening.
+    .DESCRIPTION
+        Returns information on a ticket reopening.
+        The information returned is always from the most recent reopening.
+        The script automatically accounts for returning a user for the "ClosedBy" property, meaning that technically the immediate closing status change prior to reopening was a workflow rule, but the closing status change listed will be the last one performed by a human user.
+    .EXAMPLE
+        PS C:\> Get-CWMReopenedTicketStatistics 1072849
+
+TicketID      : 1072849
+TimesReopened : 4
+DateClosed    : 12/30/2022 12:52:33 PM
+ClosedBy      : Robert Stapleton
+DateReopened  : 12/30/2022 12:52:35 PM
+OpenedBy      : Robert Stapleton
+
+        Shows that ticket 1072849 has been reopened 4 times, and the detailed information shows the latest of those occurrences.
+    .EXAMPLE
+        PS C:\> Get-CWMFullTicket -Board "Escalations" | select -ExpandProperty id | Get-CWMReopenedTicketStatistics
+        
+TicketID      : 1074670
+TimesReopened : 1
+DateClosed    : 12/27/2022 4:05:04 PM
+ClosedBy      : Al Fuller
+DateReopened  : 12/27/2022 4:19:26 PM
+OpenedBy      : Ric Cisneros
+
+TicketID      : 1074940
+TimesReopened : 1
+DateClosed    : 12/19/2022 5:19:07 PM
+ClosedBy      : Rian Stancil
+DateReopened  : 12/21/2022 2:23:00 PM
+OpenedBy      : CW Service
+
+        This code looked at every ticket on the Escalations board and returned information about the only two tickets that had ever been reopened.
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [int]$TotalItems,
+
+        [int]$UTCTimeZone = -5
+    )
+
+    BEGIN { $ItemIteration = 0 }
+
+    PROCESS {
+        $ItemIteration++
+
+        # object creation
+        $ReopenCounter = 0
+        $AuditIndex = 0
+
+        # initial information for the board the ticket resides and differentiating closing statuses from opening statuses
+        $Ticket = Get-CWMTicket -id $TicketID
+        $BoardStatus = Get-CWMBoardStatus -parentId ($Ticket.board.id) | Select-Object name, closedstatus
+        $OpenStatus = $BoardStatus | Where-Object { $_.closedStatus -eq $false }
+        $ClosedStatus = $BoardStatus | Where-Object { $_.closedStatus -eq $true }
+        $AuditTrail = Get-CWMFullAuditTrail -TicketID $TicketID | Where-Object { $_.auditType -eq 'Tickets' -and $_.auditSubType -eq 'Status' } | Sort-Object enteredDate
+
+        foreach ($Audit in $AuditTrail) {
+            $AuditIndex++
+
+            $OldStatus = (($Audit.text).Split('"'))[-4]
+            $NewStatus = (($Audit.text).Split('"'))[-2]
+
+            if ($ClosedStatus.name -contains $OldStatus -and $OpenStatus.name -contains $NewStatus) {
+                
+                # accounting for the last closed status change possibly being a workflow rule (like "Completed - Send Survey" to "Automated - Completed - Survey Sent")
+                $PriorClosedIndex = 2
+                while ($AuditTrail[($AuditIndex - $PriorClosedIndex)].enteredBy -eq "Workflow") {
+                    $PriorClosedIndex++
+                }
+                
+                $ReopenCounter++
+                $DateClosed = ($AuditTrail[($AuditIndex - $PriorClosedIndex)].enteredDate).AddHours($UTCTimeZone)
+                $ClosedBy = $AuditTrail[($AuditIndex - $PriorClosedIndex)].enteredBy
+                $DateReopened = ($AuditTrail[($AuditIndex - 1)].enteredDate).AddHours($UTCTimeZone)
+                $OpenedBy = $AuditTrail[($AuditIndex - 1)].enteredBy
+            }
+        }
+
+        if ($ReopenCounter -gt 0) {
+            $obj = [PSCustomObject]@{
+                TicketID      = $TicketID
+                TimesReopened = $ReopenCounter
+                DateClosed    = $DateClosed
+                ClosedBy      = $ClosedBy
+                DateReopened  = $DateReopened
+                OpenedBy      = $OpenedBy
+            }
+            Write-Output $obj
+        }
+        else { return }
+
+        if ($TotalItems -and $ItemIteration -le $TotalItems) {
+            Write-Progress -Activity "Analyzing tickets..." -Status "$([math]::Round((($ItemIteration/$TotalItems)*100),2))%" -PercentComplete (($ItemIteration / $TotalItems) * 100)
+        }
+    }
+
+    END {}
+}
+
 ########################################
 #endregion HELPER Functions
 
@@ -552,6 +661,82 @@ function New-CWMTimeSinceLastTimeEntryReport {
     END {
         $ObjCollection | Sort-Object -Property DaysSinceTimeEntered -Descending | Select-Object -First $ItemsToDisplay | Export-Csv -Path $CSVPath -NoTypeInformation -Force
         $ObjCollection | Sort-Object -Property DaysSinceTimeEntered -Descending | Select-Object -First $ItemsToDisplay | ConvertTo-Html -CssUri reportstyle.css | Out-File -FilePath $HTMLPath -Force
+    }
+}
+
+function New-CWMReopenedTicketReport {
+    <#
+    .SYNOPSIS
+        Generates a CSV and HTML report for re-opened tickets.
+    .DESCRIPTION
+        Generates a CSV and HTML report for re-opened tickets.  Intended use for BrightGauge.
+    .EXAMPLE
+        PS C:\> (Get-CWMFullTicket -Board "Team 1","Team 2","Team 3","Escalations","Build Team","Staff Aug").id | New-CWMReopenedTicketReport
+        Gets all tickets on the described boards and generates the csv and html reports at the current location.
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [ValidatePattern('([0-9]|[A-Z])\.csv$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .csv")]
+        [string]$CSVPath = (Get-Location).Path + "\CWMReopenedTicketReport.csv",
+
+        [ValidatePattern('([0-9]|[A-Z])\.html$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .html")]
+        [string]$HTMLPath = (Get-Location).Path + "\CWMReopenedTicketReport.html",
+
+        [int]$TotalItems,
+
+        [int]$UTCTimeZone = -5
+    )
+    
+    BEGIN {
+        $Today = Get-Date
+        $ItemIteration = 0
+        $ObjCollection = @()
+    }
+
+    PROCESS {
+        $ItemIteration++
+
+        $ReopenedStat = Get-CWMReopenedTicketStatistics -TicketID $TicketID
+        if ($ReopenedStat.TimesReopened -gt 0) {
+            $BaseStat = Get-CWMTicket -id $TicketID
+            $TicketAge = ($Today - ($BaseStat._info.dateEntered).AddHours($UTCTimeZone)).Days
+
+            $obj = [PSCustomObject]@{
+                TicketID      = $BaseStat.id
+                Company       = $BaseStat.company.name
+                Contact       = $BaseStat.contact.name
+                TimesReopened = $ReopenedStat.TimesReopened ## property specific to this report
+                DateClosed    = $ReopenedStat.DateClosed ## property specific to this report
+                ClosedBy      = $ReopenedStat.ClosedBy ## property specific to this report
+                DateReopened  = $ReopenedStat.DateReopened ## property specific to this report
+                OpenedBy      = $ReopenedStat.OpenedBy ## property specific to this report
+                Board         = $BaseStat.board.name
+                Summary       = $BaseStat.summary
+                Status        = $BaseStat.status.name
+                Resource      = $BaseStat.resources
+                Priority      = $BaseStat.priority.name
+                TicketAge     = $TicketAge
+                DateEntered   = $BaseStat._info.dateEntered.ToShortDateString()
+            }
+
+            $obj | Export-Csv -Path $CSVPath -Append -NoTypeInformation -Force
+            $ObjCollection += $obj
+        }
+
+        if ($TotalItems -and $ItemIteration -le $TotalItems) {
+            Write-Progress -Activity "Analyzing tickets..." -Status "$([math]::Round((($ItemIteration/$TotalItems)*100),2))%" -PercentComplete (($ItemIteration / $TotalItems) * 100)
+        }
+    }
+
+    END {
+        $ObjCollection | ConvertTo-Html -CssUri reportstyle.css | Out-File -FilePath $HTMLPath -Force
     }
 }
 
