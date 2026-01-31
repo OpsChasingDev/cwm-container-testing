@@ -4,15 +4,12 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Create directories for mounted volumes
-RUN mkdir -p /mnt/cwm-data /mnt/cwm-logs
-
-# Copy application files
-COPY package.json package.json
-COPY server.js server.js
-COPY html ./html
-COPY css ./css
-COPY js ./js
+# Copy application files (paths are relative to build context root)
+COPY services/web/package.json package.json
+COPY services/web/server.js server.js
+COPY services/web/html ./html
+COPY services/web/css ./css
+COPY services/web/js ./js
 
 # Install dependencies
 RUN npm install --production
