@@ -726,7 +726,6 @@ function New-CWMReopenedTicketReport {
                 DateEntered   = $BaseStat._info.dateEntered.ToShortDateString()
             }
 
-            $obj | Export-Csv -Path $CSVPath -Append -NoTypeInformation -Force
             $ObjCollection += $obj
         }
 
@@ -736,6 +735,7 @@ function New-CWMReopenedTicketReport {
     }
 
     END {
+        $ObjCollection | Export-Csv -Path $CSVPath -NoTypeInformation -Force
         $ObjCollection | ConvertTo-Html -CssUri reportstyle.css | Out-File -FilePath $HTMLPath -Force
     }
 }
