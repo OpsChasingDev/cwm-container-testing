@@ -1,0 +1,391 @@
+/* CSS Variables for Color Scheme */
+:root {
+    --primary-white: #ffffff;
+    --primary-gray-light: #f5f5f5;
+    --primary-gray-medium: #e0e0e0;
+    --primary-gray-dark: #333333;
+    --primary-blue: #0066cc;
+    --primary-blue-light: #e6f0ff;
+    --primary-blue-dark: #004a99;
+    --accent-blue: #0080ff;
+    --border-color: #d0d0d0;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--primary-gray-light);
+    color: var(--primary-gray-dark);
+    line-height: 1.6;
+}
+
+/* Header */
+.header {
+    background-color: var(--primary-white);
+    border-bottom: 2px solid var(--primary-blue);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-content {
+    max-width: 100%;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.logo-section {
+    flex-shrink: 0;
+}
+
+.company-logo {
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.company-logo:hover {
+    transform: scale(1.05);
+}
+
+.header-title {
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--primary-blue);
+    letter-spacing: -0.5px;
+}
+
+/* Main Layout */
+.container {
+    display: flex;
+    height: calc(100vh - 100px);
+    gap: 0;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 300px;
+    background-color: var(--primary-white);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    padding: 20px;
+    box-shadow: inset -2px 0 4px rgba(0, 0, 0, 0.02);
+}
+
+.menu-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--primary-gray-medium);
+}
+
+.menu-section:last-child {
+    border-bottom: none;
+}
+
+.menu-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-gray-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+
+/* App Buttons */
+.app-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.app-btn {
+    padding: 12px 16px;
+    background-color: var(--primary-gray-light);
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--primary-gray-dark);
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.app-btn:hover {
+    background-color: var(--primary-blue-light);
+    border-color: var(--primary-blue);
+    transform: translateX(4px);
+}
+
+.app-btn.active {
+    background-color: var(--primary-blue);
+    color: var(--primary-white);
+    border-color: var(--primary-blue-dark);
+    box-shadow: var(--shadow);
+}
+
+/* Board Filter */
+label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--primary-gray-dark);
+}
+
+.board-filter {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: var(--primary-white);
+    color: var(--primary-gray-dark);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.board-filter:hover {
+    border-color: var(--primary-blue);
+    box-shadow: inset 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+.board-filter:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: inset 0 0 0 2px rgba(0, 102, 204, 0.15);
+}
+
+/* Download Button */
+.download-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: var(--primary-blue);
+    color: var(--primary-white);
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.download-btn:hover:not(:disabled) {
+    background-color: var(--primary-blue-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+}
+
+.download-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.download-btn:disabled {
+    background-color: var(--primary-gray-medium);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-icon {
+    font-size: 16px;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    background-color: var(--primary-gray-light);
+}
+
+.report-container {
+    background-color: var(--primary-white);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    min-height: 100%;
+}
+
+/* Placeholder */
+.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--primary-gray-medium);
+    font-size: 16px;
+}
+
+/* Table Styling */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.report-table thead {
+    background-color: var(--primary-blue);
+    color: var(--primary-white);
+    position: sticky;
+    top: 0;
+}
+
+.report-table th {
+    padding: 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    user-select: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.report-table th:hover {
+    background-color: var(--primary-blue-dark);
+}
+
+.report-table th.sortable::after {
+    content: ' ⇅';
+    opacity: 0.7;
+    font-size: 12px;
+}
+
+.report-table th.sorted-asc::after {
+    content: ' ↑';
+    opacity: 1;
+}
+
+.report-table th.sorted-desc::after {
+    content: ' ↓';
+    opacity: 1;
+}
+
+.report-table tbody tr {
+    border-bottom: 1px solid var(--primary-gray-medium);
+    transition: background-color 0.15s ease;
+}
+
+.report-table tbody tr:hover {
+    background-color: var(--primary-blue-light);
+}
+
+.report-table tbody tr.hidden {
+    display: none;
+}
+
+.report-table td {
+    padding: 12px 14px;
+    font-size: 13px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--primary-gray-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-gray-medium);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-gray-dark);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        max-height: 200px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .menu-section {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+        border-right: 1px solid var(--primary-gray-medium);
+    }
+
+    .menu-section:last-child {
+        border-right: none;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px 20px;
+    }
+
+    .header-title {
+        font-size: 24px;
+    }
+}
+
+/* Loading Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.report-container.loading {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--primary-gray-medium);
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary-gray-dark);
+}
+
+.empty-state-message {
+    font-size: 14px;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "cwm-custom-reporting-server",
+  "version": "1.0.0",
+  "description": "CWM Custom Reporting Server - Web UI for viewing and downloading reports from containerized apps",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "cwm",
+    "reporting",
+    "docker",
+    "azure"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
