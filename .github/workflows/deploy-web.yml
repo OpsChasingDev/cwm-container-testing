@@ -78,15 +78,13 @@ jobs:
                     cpu: 1.0
                     memoryInGb: 1.5
                 ports:
-                - port: 3000
+                - port: 80
                   protocol: TCP
                 environmentVariables:
                   - name: SERVICE_NAME
                     value: web
                   - name: LOG_LEVEL
                     value: Info
-                  - name: PORT
-                    value: '3000'
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
@@ -102,7 +100,7 @@ jobs:
               type: Public
               ports:
               - protocol: TCP
-                port: 3000
+                port: 80
           EOF
           
           # Delete existing container group if it exists
