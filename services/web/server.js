@@ -74,6 +74,17 @@ app.get('/report/:filename', (req, res) => {
 });
 
 /**
+ * Endpoint to provide CWM server configuration from environment variable
+ */
+app.get('/config/cwm-server', (req, res) => {
+  const cwmServer = process.env.CWM_SERVER;
+  if (!cwmServer) {
+    return res.status(500).json({ error: 'CWM_SERVER environment variable not set' });
+  }
+  res.json({ cwmServer });
+});
+
+/**
  * Health check endpoint for container orchestration
  */
 app.get('/health', (req, res) => {

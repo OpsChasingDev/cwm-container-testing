@@ -3,12 +3,31 @@ var selectedReportCSV = '';
 var sidebarLinks;
 var descriptions = {};
 var interval;
+var cwmServer = null; // Will be loaded from server config
 
 function loadPage(event, url) {
     event.preventDefault(); // Prevent the link from navigating to the URL
     // clear interval defined in var "interval" to prevent multiple loops running
     clearInterval(interval);
 
+    // Load CWM server URL from config endpoint before making requests
+    var configXhr = new XMLHttpRequest();
+    configXhr.onreadystatechange = function () {
+        if (configXhr.readyState === XMLHttpRequest.DONE) {
+            if (configXhr.status === 200) {
+                var config = JSON.parse(configXhr.responseText);
+                cwmServer = config.cwmServer;
+                loadReport(url);
+            } else {
+                console.error('Failed to load CWM server configuration');
+            }
+        }
+    };
+    configXhr.open("GET", 'config/cwm-server', true);
+    configXhr.send();
+}
+
+function loadReport(url) {
     var xhr = new XMLHttpRequest();
 
     xhr.onreadystatechange = function () {
@@ -165,7 +184,7 @@ function ticketHyperlink() {
 
         // Create the hyperlink element
         var link = document.createElement("a");
-        link.href = "https://connect.savantcts.com/v4_6_release/ConnectWise.aspx?locale=en_US&routeTo=ServiceFV&recid=" + ticketId;
+        link.href = "https://" + cwmServer + "/v4_6_release/ConnectWise.aspx?locale=en_US&routeTo=ServiceFV&recid=" + ticketId;
         link.textContent = ticketId;
         link.target = "_blank"; // Open link in a new tab
 
