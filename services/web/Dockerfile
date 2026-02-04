@@ -1,19 +1,31 @@
-# Use the official nginx image as a base
-FROM nginx:alpine
+# Use Node.js 18 Alpine as the base image
+FROM node:18-alpine
 
-# Create the /mnt/cwm-data directory for mounting Azure Files
+# Set working directory
+WORKDIR /app
+
+# Create mount directory for reports
 RUN mkdir -p /mnt/cwm-data
 
-# Copy a simple health check script
-RUN echo '#!/bin/sh\nset -e\ncurl -f http://localhost/health || exit 1' > /healthcheck.sh && \
-    chmod +x /healthcheck.sh
+# Copy package files
+COPY services/web/package.json .
+COPY services/web/package-lock.json* .
 
-# Expose port 80
-EXPOSE 80
+# Install dependencies
+RUN npm ci --only=production
+
+# Copy application code
+COPY services/web/server.js .
+
+# Copy public files (static web content)
+COPY services/web/public ./public
+
+# Expose port 3000
+EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD /healthcheck.sh
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
 
-# Default nginx command
-CMD ["nginx", "-g", "daemon off;"]
+# Start the server
+CMD ["node", "server.js"]

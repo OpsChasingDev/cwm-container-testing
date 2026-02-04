@@ -1,0 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu');
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Ubuntu', sans-serif;
+}
+
+#header {
+  position: fixed;
+  width: 100%;
+  height: 79px;
+  background-color: #50b7e0;
+  border: 1px solid black;
+  padding: 20px;
+  text-align: center;
+}
+
+#container {
+  position: relative;
+  top: 120px;
+  width: 100%;
+  height: 100%;
+}
+
+#sidebar {
+  position: fixed;
+  top: 120px;
+  left: 0;
+  bottom: 0;
+  width: 200px;
+  background-color: #ccc;
+  border: 1px solid black;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+#viewport {
+  /* controlling the ability to scroll in the viewport*/
+  overflow: auto;
+  position: fixed;
+  width: 70%;
+  height: 70%;
+  top: 120px;
+  left: 240px;
+  padding: 20px;
+  /* Add some space to the left for the sidebar */
+}
+
+li {
+  list-style-type: none;
+  text-align: left;
+  margin-bottom: 5px;
+}
+
+#sidebar a {
+  display: block;
+  color: #333;
+  text-decoration: none;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #f1f1f1;
+  transition: background-color 0.2s;
+  transition: transform .1s;
+}
+
+#sidebar a:hover {
+  background-color: #66626275;
+}
+
+#sidebar a.clicked {
+  background-color: #50b7e0;
+  color: #fff;
+}
+
+#sidebar a:active {
+  transform: scale(0.90);
+}
+
+#sidebar a:last-child.clicked {
+  color: #333;
+  background-color: #50b7e0;
+  font-weight: bold;
+}
+
+
+#downloadButton {
+  background-color: #50b7e0;
+  border: 1px solid black;
+  padding: 5px;
+  margin-bottom: 5px;
+  color: black;
+  font-weight: bold;
+  font-size: large;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform .1s;
+}
+
+#downloadButton:hover {
+  background-color: #158bb9;
+}
+
+#downloadButton:active {
+  transform: scale(0.90);
+}
+
+/* Hide all pages by default */
+.page {
+  display: none;
+}
+
+/* Show the selected page */
+.page.active {
+  display: block;
+}
+
+/* Styling for board selection menu */
+.filter-container {
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+select {
+  width: 100%;
+  padding: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+}
+
+.sidebar-header {
+  font-weight: bold;
+  font-size: 20px;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  text-decoration: underline;
+}
+
+.subsection-toggle {
+  display: hidden;
+}
+
+.subsection-toggle:hover {
+  cursor: pointer;
+  font-style: italic;
+}
+
+.subsection-toggle:active {
+  transform: scale(0.90);
+}

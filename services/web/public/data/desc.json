@@ -1,0 +1,10 @@
+{
+    "ReopenedTicketReport.html": "Displays any currently open ticket that has been reopened at least once in its lifetime.",
+    "TimeSinceLastTimeEntryReport.html": "For currently open tickets, displays the top 40 tickets with the longest time since time was last entered by anyone.  The DaysSinceTimeEntered field shows this time value.",
+    "POCOpenTicketReport.html": "Displays all open tickets whose primary contact is labeled in CWM as at least one of the following: 'Owner','POC','VIP','Primary Contact','Decision Maker'",
+    "AvgTimeEntryGapReport.html": "For currently open tickets, displays the top 40 tickets with the longest average time (measured in days) between time entries.  The AvgTimeEntryGap field shows this time value.",
+    "AvgTimeEntryDurationReport.html": "Displays all open tickets and the average time spent on time entries within them, measured in minutes.  The AvgTimeEntryDuration field shows this time value.",
+    "TicketsWorkedTodayReport.html": "Shows statistics per tech on the tickets they have worked in the current day.  The 'TotalTimeEntries' column value will be larger than the 'TicketsWorked' column value if the tech has entered more than one time entry into the same ticket.",
+    "TicketsWorkedLastDaysReport_30.html": "Shows statistics per tech on the tickets they have worked in the last 30 calendar days.  The 'TotalTimeEntries' column value will be larger than the 'TicketsWorked' column value if the tech has entered more than one time entry into the same ticket.  This is a longer running report which is refreshed once per day.",
+    "TicketsWorkedLastDaysReport_90.html": "Shows statistics per tech on the tickets they have worked in the last 90 calendar days.  The 'TotalTimeEntries' column value will be larger than the 'TicketsWorked' column value if the tech has entered more than one time entry into the same ticket.  This is a longer running report which is refreshed once per day."
+}
