@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- For Mobile Devices -->
+  <link rel="stylesheet" href="indexstyle.css" media="all">
+  <title>CWM Custom Reporting</title>
+  <link rel="icon" type="image/png">
+  <script src="main.js"></script>
+</head>
+
+<body>
+  <!-- Header -->
+  <header id="header">
+    <h1>CWM Custom Reporting</h1>
+  </header>
+
+  <!-- Container -->
+  <div id="container">
+    <!-- Sidebar -->
+    <div id="sidebar">
+      <button id="downloadButton" onclick="download()">Download CSV</button>
+
+      <br></br>
+
+      <div class="filter-container">
+        <label class="sidebar-header" for="board-select">Select Boards:</label>
+        <select id="board-select" multiple size="11">
+          <option value="all">~~ All Boards ~~</option>
+          <option value="After Hours">After Hours</option>
+          <option value="Build Team">Build Team</option>
+          <option value="Dispatch">Dispatch</option>
+          <option value="Escalations">Escalations</option>
+          <option value="Field Services">Field Services</option>
+          <option value="Onboarding">Onboarding</option>
+          <option value="Staff Aug">Staff Aug</option>
+          <option value="Team 1">Team 1</option>
+          <option value="Team 2">Team 2</option>
+          <option value="Team 3">Team 3</option>
+        </select>
+      </div>
+
+      <br></br>
+
+      <h2 class="sidebar-header">Select Report:</h2>
+        <div class="sidebar-subsection">
+          <h4 class="subsection-toggle">Real-Time Reports</h4>
+          <div class="report-links">
+            <li><a href="ReopenedTicketReport.html" onclick="loadPage(event, 'ReopenedTicketReport.html')">Reopened Ticket Report</a></li>
+            <li><a href="TimeSinceLastTimeEntryReport.html" onclick="loadPage(event, 'TimeSinceLastTimeEntryReport.html')">Time Since Last Time Entry Report</a></li>
+            <li><a href="POCOpenTicketReport.html" onclick="loadPage(event, 'POCOpenTicketReport.html')">POC Open Ticket Report</a></li>
+            <li><a href="AvgTimeEntryGapReport.html" onclick="loadPage(event, 'AvgTimeEntryGapReport.html')">Avg Time Entry Gap Report</a></li>
+            <li><a href="AvgTimeEntryDurationReport.html" onclick="loadPage(event, 'AvgTimeEntryDurationReport.html')">Avg Time Entry Duration Report</a></li>
+            <li><a href="TicketsWorkedTodayReport.html" onclick="loadPage(event, 'TicketsWorkedTodayReport.html')">Tickets Worked Today Report</a></li>
+          </div>
+        </div>
+        <div class="sidebar-subsection">
+          <h4 class="subsection-toggle">Daily Reports</h4>
+          <div class="report-links">
+            <li><a href="TicketsWorkedLastDaysReport_30.html" onclick="loadPage(event, 'TicketsWorkedLastDaysReport_30.html')">Tickets Worked Last 30 Days Report</a></li>
+            <!-- <li><a href="TicketsWorkedLastDaysReport_90.html" onclick="loadPage(event, 'TicketsWorkedLastDaysReport_90.html')">Tickets Worked Last 90 Days Report</a></li> -->
+          </div>
+        </div>
+        
+        <!-- This script handles subsection toggling. -->
+        <script src="toggle_subsection.js"></script>
+
+      <br></br>
+      
+      <h2 class="sidebar-header">Description:</h2>
+      <div id="description-data"></div>
+
+    </div>
+  
+    <!-- Viewport -->
+    <div id="viewport"></div>
+  </div>
+</body>
+
+</html>
