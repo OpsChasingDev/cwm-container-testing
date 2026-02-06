@@ -85,13 +85,10 @@ jobs:
                     value: web
                   - name: LOG_LEVEL
                     value: Info
-<<<<<<< HEAD
-=======
                   - name: PORT
                     value: "80"
                   - name: CWM_SERVER
                     value: ${{ secrets.CWM_SERVER }}
->>>>>>> DEV
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
