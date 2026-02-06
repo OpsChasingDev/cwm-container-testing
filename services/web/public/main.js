@@ -30,11 +30,16 @@ function loadPage(event, url) {
 function loadReport(url) {
     var xhr = new XMLHttpRequest();
 
+    // Extract base name from URL (e.g., TimeSinceLastTimeEntryReport.html -> TimeSinceLastTimeEntry)
+    var baseName = url.split('/').pop().replace('Report.html', '');
+    var appName = 'app' + baseName;
+    var reportPath = '/mnt/cwm-data/' + appName + '/' + appName + '.html';
+
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
                 document.getElementById("viewport").innerHTML = xhr.responseText;
-                var csvName = url.split('/').pop().replace('.html', '.csv');
+                var csvName = appName + '.csv';
                 selectedReportCSV = csvName;
 
                 // Call loadTable function to update TicketID hyperlinks
@@ -66,12 +71,12 @@ function loadReport(url) {
     boardSelect = document.getElementById('board-select');
     boardSelect.addEventListener('change', filterTableRows);
 
-    xhr.open("GET", 'report/' + url, true);
+    xhr.open("GET", reportPath, true);
     xhr.send();
 
     // add a 5 minute interval loop to refresh the selected report
     interval = setInterval(function () {
-        xhr.open("GET", 'report/' + url, true);
+        xhr.open("GET", reportPath, true);
         xhr.send();
         // write to console to confirm the loop is running
         console.log("Refreshing report...");
@@ -100,7 +105,8 @@ function download() {
     if (selectedReportCSV !== '') {
         var element = document.createElement('a');
         // the below line is for ease of changing the path to the CSV file if needed in the future
-        var reportFullPath = 'report/' + selectedReportCSV;
+        var appName = selectedReportCSV.replace('.csv', '');
+        var reportFullPath = '/mnt/cwm-data/' + appName + '/' + selectedReportCSV;
         element.setAttribute('href', reportFullPath);
         element.setAttribute('download', selectedReportCSV);
         element.style.display = 'none';
