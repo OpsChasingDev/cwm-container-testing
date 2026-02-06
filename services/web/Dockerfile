@@ -12,7 +12,7 @@ COPY services/web/package.json .
 COPY services/web/package-lock.json* .
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application code
 COPY services/web/server.js .
