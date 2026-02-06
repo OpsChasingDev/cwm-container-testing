@@ -9,16 +9,19 @@ RUN mkdir -p /mnt/cwm-data
 
 # Copy package files
 COPY services/web/package.json .
-COPY services/web/package-lock.json* .
 
 # Install dependencies
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy application code
 COPY services/web/server.js .
 
 # Copy public files (static web content)
 COPY services/web/public ./public
+
+# Copy healthcheck script
+COPY services/web/healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh
 
 # Expose port 3000
 EXPOSE 3000
