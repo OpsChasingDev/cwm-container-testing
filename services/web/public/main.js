@@ -6,15 +6,15 @@ var interval;
 var cwmServer = null; // Will be loaded from server config
 var environment = 'production'; // Will be loaded from server config
 
-// Load and display environment banner on page load
+// Load and update header based on environment on page load
 fetch('/config/environment')
   .then(response => response.json())
   .then(data => {
     environment = data.environment;
     if (environment === 'staging') {
-      const banner = document.getElementById('environment-banner');
-      if (banner) {
-        banner.style.display = 'block';
+      const pageTitle = document.getElementById('page-title');
+      if (pageTitle) {
+        pageTitle.textContent = 'CWM Custom Reporting - STAGING';
       }
     }
   })

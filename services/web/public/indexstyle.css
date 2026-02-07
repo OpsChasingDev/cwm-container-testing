@@ -6,21 +6,6 @@ body {
   font-family: 'Ubuntu', sans-serif;
 }
 
-.environment-banner {
-  display: none;
-  background-color: #ff9800;
-  color: white;
-  font-weight: bold;
-  text-align: center;
-  padding: 10px;
-  font-size: 16px;
-  position: fixed;
-  width: 100%;
-  top: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
 #header {
   position: fixed;
   width: 100%;
@@ -29,19 +14,18 @@ body {
   border: 1px solid black;
   padding: 20px;
   text-align: center;
-  top: 40px;
 }
 
 #container {
   position: relative;
-  top: 160px;
+  top: 120px;
   width: 100%;
   height: 100%;
 }
 
 #sidebar {
   position: fixed;
-  top: 160px;
+  top: 120px;
   left: 0;
   bottom: 0;
   width: 200px;
