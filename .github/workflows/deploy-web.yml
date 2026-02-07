@@ -119,3 +119,24 @@ jobs:
           az container create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --file /tmp/aci-web-deployment.yaml
+
+      - name: Update Azure DNS Records
+        run: |
+          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-web' || 'cwm-staging-web' }}
+          DNS_RECORD_NAME=${{ github.ref == 'refs/heads/main' && '@' || 'staging' }}
+          DNS_ZONE_NAME=cwm-reporting.opschasingdev.com
+          
+          # Get the public IP of the deployed ACI container
+          ACI_PUBLIC_IP=$(az container show \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name $CONTAINER_GROUP_NAME \
+            --query ipAddress.ip -o tsv)
+          
+          echo "ACI Public IP: $ACI_PUBLIC_IP"
+          
+          # Update the DNS A record
+          az network dns record-set a update \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --zone-name $DNS_ZONE_NAME \
+            --name $DNS_RECORD_NAME \
+            --ipv4-address $ACI_PUBLIC_IP
