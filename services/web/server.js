@@ -85,6 +85,14 @@ app.get('/config/cwm-server', (req, res) => {
 });
 
 /**
+ * Endpoint to provide environment configuration
+ */
+app.get('/config/environment', (req, res) => {
+  const environment = process.env.ENVIRONMENT || 'production';
+  res.json({ environment });
+});
+
+/**
  * Health check endpoint for container orchestration
  */
 app.get('/health', (req, res) => {

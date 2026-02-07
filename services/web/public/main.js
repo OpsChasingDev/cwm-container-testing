@@ -4,6 +4,21 @@ var sidebarLinks;
 var descriptions = {};
 var interval;
 var cwmServer = null; // Will be loaded from server config
+var environment = 'production'; // Will be loaded from server config
+
+// Load and display environment banner on page load
+fetch('/config/environment')
+  .then(response => response.json())
+  .then(data => {
+    environment = data.environment;
+    if (environment === 'staging') {
+      const banner = document.getElementById('environment-banner');
+      if (banner) {
+        banner.style.display = 'block';
+      }
+    }
+  })
+  .catch(error => console.log('Environment config not available'));
 
 function loadPage(event, url) {
     event.preventDefault(); // Prevent the link from navigating to the URL
