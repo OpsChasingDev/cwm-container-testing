@@ -134,8 +134,22 @@ jobs:
           
           echo "ACI Public IP: $ACI_PUBLIC_IP"
           
-          # Update the DNS A record
-          az network dns record-set a update \
+          # Delete the existing DNS A record set if it exists
+          az network dns record-set a delete \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --zone-name $DNS_ZONE_NAME \
+            --name $DNS_RECORD_NAME \
+            --yes 2>/dev/null || true
+          
+          # Create a new A record with the current ACI public IP
+          az network dns record-set a create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --zone-name $DNS_ZONE_NAME \
+            --name $DNS_RECORD_NAME \
+            --ttl 60
+          
+          # Add the IP address to the record set
+          az network dns record-set a add-record \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --zone-name $DNS_ZONE_NAME \
             --name $DNS_RECORD_NAME \
