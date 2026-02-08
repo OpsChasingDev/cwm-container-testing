@@ -1,5 +1,13 @@
+#######################
+#region APP DESCRIPTION
+#######################
+
 $script:appName = "appTimeSinceLastTimeEntry"
 $FrequencyMinutes = 2
+
+##########################
+#endregion APP DESCRIPTION
+##########################
 
 #region SHARED INTITALIZATION
 
@@ -39,7 +47,80 @@ catch {
 
 #endregion SHARED INTITALIZATION
 
+#####################
+#region APP FUNCTIONS
+#####################
+
+function New-CWMTimeSinceLastTimeEntryReport {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [ValidatePattern('([0-9]|[A-Z])\.csv$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .csv")]
+        [string]$CSVPath = (Get-Location).Path + "\CWMTimeSinceLastTimeEntryReport.csv",
+
+        [ValidatePattern('([0-9]|[A-Z])\.html$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .html")]
+        [string]$HTMLPath = (Get-Location).Path + "\CWMTimeSinceLastTimeEntryReport.html",
+
+        [int]$ItemsToDisplay = 20,
+
+        [int]$TotalItems,
+
+        [int]$UTCTimeZone = -5
+    )
+    
+    BEGIN {
+        $Today = Get-Date
+        $ItemIteration = 0
+        $ObjCollection = @()
+    }
+
+    PROCESS {
+        $ItemIteration++
+
+        $LastTimeEntry = Get-CWMTimeSinceLastTimeEntry -TicketID $TicketID
+        if ($LastTimeEntry) {
+            $BaseStat = Get-CWMTicket -id $TicketID
+            $TicketAge = ($Today - ($BaseStat._info.dateEntered).AddHours($UTCTimeZone)).Days
+
+            $obj = [PSCustomObject]@{
+                TicketID             = $BaseStat.id
+                Company              = $BaseStat.company.name
+                Contact              = $BaseStat.contact.name
+                DaysSinceTimeEntered = [math]::Round(($LastTimeEntry / 24), 0) ## property specific to this report
+                Board                = $BaseStat.board.name
+                Summary              = $BaseStat.summary
+                Status               = $BaseStat.status.name
+                Resource             = $BaseStat.resources
+                Priority             = $BaseStat.priority.name
+                TicketAge            = $TicketAge
+                DateEntered          = $BaseStat._info.dateEntered.ToShortDateString()
+            }
+
+            $ObjCollection += $obj
+        }
+
+        if ($TotalItems -and $ItemIteration -le $TotalItems) {
+            Write-Progress -Activity "Analyzing tickets..." -Status "$([math]::Round((($ItemIteration/$TotalItems)*100),2))%" -PercentComplete (($ItemIteration / $TotalItems) * 100)
+        }
+    }
+
+    END {
+        $ObjCollection | Sort-Object -Property DaysSinceTimeEntered -Descending | Select-Object -First $ItemsToDisplay | Export-Csv -Path $CSVPath -NoTypeInformation -Force
+        $ObjCollection | Sort-Object -Property DaysSinceTimeEntered -Descending | Select-Object -First $ItemsToDisplay | ConvertTo-Html -CssUri reportstyle.css | Out-File -FilePath $HTMLPath -Force
+    }
+}
+
+########################
+#endregion APP FUNCTIONS
+########################
+
 New-CWMLog -Type "Info" -Message "STARTING $($script:appName.ToUpper()) SERVICE"
+
 while ($true) {
     $Start = Get-Date
     New-CWMLog -Type "Info" -Message "Starting new iteration of $script:appName"

@@ -1,5 +1,13 @@
+#######################
+#region APP DESCRIPTION
+#######################
+
 $script:appName = "appReopenedTicket"
 $FrequencyMinutes = 2
+
+##########################
+#endregion APP DESCRIPTION
+##########################
 
 #region SHARED INTITALIZATION
 
@@ -38,6 +46,90 @@ catch {
 }
 
 #endregion SHARED INTITALIZATION
+
+#####################
+#region APP FUNCTIONS
+#####################
+
+function New-CWMReopenedTicketReport {
+    <#
+    .SYNOPSIS
+        Generates a CSV and HTML report for re-opened tickets.
+    .DESCRIPTION
+        Generates a CSV and HTML report for re-opened tickets.  Intended use for BrightGauge.
+    .EXAMPLE
+        PS C:\> (Get-CWMFullTicket -Board "Team 1","Team 2","Team 3","Escalations","Build Team","Staff Aug").id | New-CWMReopenedTicketReport
+        Gets all tickets on the described boards and generates the csv and html reports at the current location.
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [ValidatePattern('([0-9]|[A-Z])\.csv$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .csv")]
+        [string]$CSVPath = (Get-Location).Path + "\CWMReopenedTicketReport.csv",
+
+        [ValidatePattern('([0-9]|[A-Z])\.html$')]
+        [Parameter(HelpMessage = "Enter a full file path and name ending in .html")]
+        [string]$HTMLPath = (Get-Location).Path + "\CWMReopenedTicketReport.html",
+
+        [int]$TotalItems,
+
+        [int]$UTCTimeZone = -5
+    )
+    
+    BEGIN {
+        $Today = Get-Date
+        $ItemIteration = 0
+        $ObjCollection = @()
+    }
+
+    PROCESS {
+        $ItemIteration++
+
+        $ReopenedStat = Get-CWMReopenedTicketStatistics -TicketID $TicketID
+        if ($ReopenedStat.TimesReopened -gt 0) {
+            $BaseStat = Get-CWMTicket -id $TicketID
+            $TicketAge = ($Today - ($BaseStat._info.dateEntered).AddHours($UTCTimeZone)).Days
+
+            $obj = [PSCustomObject]@{
+                TicketID      = $BaseStat.id
+                Company       = $BaseStat.company.name
+                Contact       = $BaseStat.contact.name
+                TimesReopened = $ReopenedStat.TimesReopened ## property specific to this report
+                DateClosed    = $ReopenedStat.DateClosed ## property specific to this report
+                ClosedBy      = $ReopenedStat.ClosedBy ## property specific to this report
+                DateReopened  = $ReopenedStat.DateReopened ## property specific to this report
+                OpenedBy      = $ReopenedStat.OpenedBy ## property specific to this report
+                Board         = $BaseStat.board.name
+                Summary       = $BaseStat.summary
+                Status        = $BaseStat.status.name
+                Resource      = $BaseStat.resources
+                Priority      = $BaseStat.priority.name
+                TicketAge     = $TicketAge
+                DateEntered   = $BaseStat._info.dateEntered.ToShortDateString()
+            }
+
+            $ObjCollection += $obj
+        }
+
+        if ($TotalItems -and $ItemIteration -le $TotalItems) {
+            Write-Progress -Activity "Analyzing tickets..." -Status "$([math]::Round((($ItemIteration/$TotalItems)*100),2))%" -PercentComplete (($ItemIteration / $TotalItems) * 100)
+        }
+    }
+
+    END {
+        $ObjCollection | Export-Csv -Path $CSVPath -NoTypeInformation -Force
+        $ObjCollection | ConvertTo-Html -CssUri reportstyle.css | Out-File -FilePath $HTMLPath -Force
+    }
+}
+
+########################
+#endregion APP FUNCTIONS
+########################
 
 New-CWMLog -Type "Info" -Message "STARTING $($script:appName.ToUpper()) SERVICE"
 while ($true) {
