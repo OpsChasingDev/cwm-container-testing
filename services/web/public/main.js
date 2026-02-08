@@ -78,6 +78,12 @@ function loadReport(url) {
 
                 // Update the description based on the selected link
                 updateDescription(url);
+
+                // Get the Last-Modified header from the response
+                var lastModified = xhr.getResponseHeader('Last-Modified');
+                
+                // Update the timestamp with the file's Last-Modified date
+                updateTimestamp(lastModified);
             } else {
                 console.error(xhr.statusText);
             }
@@ -131,6 +137,28 @@ function download() {
     } else {
         console.error("No report selected");
     }
+}
+
+function updateTimestamp(lastModifiedHeader) {
+    var date;
+    
+    if (lastModifiedHeader) {
+        // Parse the HTTP Last-Modified header (format: "Wed, 21 Oct 2015 07:28:00 GMT")
+        date = new Date(lastModifiedHeader);
+    } else {
+        date = new Date();
+    }
+    
+    var year = date.getFullYear();
+    var month = String(date.getMonth() + 1).padStart(2, '0');
+    var day = String(date.getDate()).padStart(2, '0');
+    var hours = String(date.getHours()).padStart(2, '0');
+    var minutes = String(date.getMinutes()).padStart(2, '0');
+    var seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    var formattedDateTime = year + '-' + month + '-' + day + ' ' + hours + ':' + minutes + ':' + seconds;
+    var timestampElement = document.getElementById('dataTimestamp');
+    timestampElement.textContent = 'Date: ' + formattedDateTime;
 }
 
 function filterTableRows() {

@@ -97,6 +97,13 @@ li {
   transition: transform .1s;
 }
 
+.timestamp-text {
+  font-size: 0.85em;
+  font-style: italic;
+  margin: 5px 0;
+  color: #555;
+}
+
 #downloadButton:hover {
   background-color: #158bb9;
 }
