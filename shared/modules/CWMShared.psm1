@@ -594,5 +594,61 @@ OpenedBy      : CW Service
     END {}
 }
 
+function Get-CWMAvgTimeEntryGap {
+    <#
+    .SYNOPSIS
+        Returns the average amount of time in days it takes for any given ticket to have a time entry logged.
+    .DESCRIPTION
+        Returns the average amount of time in days it takes for any given ticket to have a time entry logged.
+    .EXAMPLE
+        PS C:\Git\ConnectWise_Manage\bin> Get-CWMAvgTimeEntryGap -TicketID 1082982
+
+        Output:
+            2.64
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [int]$UTCTimeZone = -5
+    )
+
+    BEGIN {}
+
+    PROCESS {
+        ## get all time entries and ticket creation time
+        $TimeEntryDateTime = Get-CWMTimeEntry -condition "(chargeToType='ServiceTicket' OR chargeToType='ProjectTicket') AND chargeToId=$TicketID" -all
+        $CreationTime = (Get-CWMTicket -id $TicketID)._info.dateEntered
+        $TimeEntryGapCol = @()
+
+        ## handling edge cases
+        if ($TimeEntryDateTime.count -eq 0) {
+            Write-Verbose "Ticket $TicketID has no time entries."
+            return $null
+        }
+        elseif ($TimeEntryDateTime.count -eq 1) {
+            $AverageTimeEntryGap = [math]::Round((($TimeEntryDateTime.dateEntered - $CreationTime).TotalDays), 2)
+            Write-Output $AverageTimeEntryGap
+        }
+        else {
+            for ($i = 0; $i -lt $TimeEntryDateTime.Count; $i++) {
+                if ($i -eq 0) {
+                    $TimeEntryGapCol += [math]::Round((($TimeEntryDateTime[$i].dateEntered - $CreationTime).TotalDays), 2)
+                }
+                else {
+                    $TimeEntryGapCol += [math]::Round((($TimeEntryDateTime[$i].dateEntered - $TimeEntryDateTime[$i - 1].dateEntered).TotalDays), 2)
+                }
+            }
+            $AverageTimeEntryGap = [math]::Round(($TimeEntryGapCol | Measure-Object -Average).Average, 2)
+            Write-Output $AverageTimeEntryGap
+        }
+    }
+
+    END {}
+}
+
 ########################################
 #endregion HELPER Functions
