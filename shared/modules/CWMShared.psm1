@@ -700,5 +700,166 @@ function Get-CWMAvgTimeEntryDuration {
     END {}
 }
 
+function Get-CWMTicketsWorkedTodayStatistics {
+    <#
+    .SYNOPSIS
+        Gets statistics for tickets worked in the current day per tech.
+    .DESCRIPTION
+        Gets statistics for tickets worked in the current day per tech.  Output includes the technician, the number of unique tickets worked, the total number of time entries, the total hours worked, and the average time entry duration.
+    .EXAMPLE
+        Get-CWMTicketsWorkedTodayStatistics | ft *
+
+        TechId      TechFullName    TicketsWorked TotalTimeEntries TotalHours AvgTimeEntryDuration
+        ------      ------------    ------------- ---------------- ---------- --------------------
+        aarnold     Antoine Arnold              3                3       0.70                 0.23
+        afuller     Al Fuller                   1                1       1.02                 1.02
+        amcconville Alex McConville             5                6       0.55                 0.09
+        amoore      Ashton Moore                1                1       1.30                 1.30
+        ascott      Alex Scott                 10               13       1.22                 0.09
+        athanmartin Athan Martin                9               10       1.59                 0.16
+        BPittman    Brandon Pittman             1                1       0.87                 0.87
+        chollis     Christopher Ho…             4                4       1.42                 0.36
+        ...
+    #>
+    [CmdletBinding()]
+    $TicketByTechAll = Get-CWMTicketsWorkedToday -All | Group-Object -Property enteredBy
+    $TicketCountByTech = Get-CWMTicketsWorkedTodayPerTechHelper
+    foreach ($TicketFull in $TicketByTechAll) {
+        # if statement responsible for matching the results of the helper function to the current tech to get total unique tickets worked for the day
+        if ($TicketCountByTech.Technician -contains $TicketFull.Name) {
+            $Count = $TicketCountByTech | Where-Object { $_.Technician -eq $TicketFull.Name } | Select-Object -ExpandProperty TicketsWorked
+        }
+        else {
+            $Count = 0
+        }
+
+        $TicketTimeSum = 0
+        $TicketTimeAvg = @()
+
+        # time entry calculations
+        foreach ($TicketId in $TicketFull.Group) {
+            $Identifier = $TicketFull.Name
+            $TechFullInfo = Get-CWMMember -condition "identifier='$Identifier'"
+            $TimeSpanHours = [math]::Round((($TicketId.timeEnd - $TicketId.timeStart).TotalHours), 2)
+            $TicketTimeSum += $TimeSpanHours
+            $TicketTimeAvg += $TimeSpanHours
+        }
+        $obj = [PSCustomObject]@{
+            TechId               = $TicketFull.Name
+            TechFullName         = $TechFullInfo.firstname + ' ' + $TechFullInfo.lastname
+            TicketsWorked        = $Count
+            TotalTimeEntries     = $TicketFull.Count
+            TotalHours           = $TicketTimeSum
+            AvgTimeEntryDuration = [math]::Round(($TicketTimeAvg | Measure-Object -Average).Average, 2)
+        }
+        Write-Output $obj
+    }
+}
+
+function Get-CWMTicketsWorkedToday {
+    <#
+    .SYNOPSIS
+        Outputs information about time entries for the current day.
+    .DESCRIPTION
+        Outputs information about time entries for the current day.  If the -All switch is used, all time entries for the current day are returned.  Otherwise, only unique time entries are returned.
+        Unique time entries means that if a tech has entered time into the same ticket more than once in the day, only the first entry is returned.
+    #>
+    
+    [CmdletBinding()]
+    param(
+        [switch]$All = $false
+    )
+
+    # get all time entries for the current day
+    $date = Get-Date
+    $DateTime = ($date.AddHours(-$date.Hour).AddMinutes(-$date.Minute).AddSeconds(-$date.Second)).ToUniversalTime().DateTime
+    $TimeEntryRaw = Get-CWMTimeEntry -condition "(chargeToType='ServiceTicket' OR chargeToType='ProjectTicket') AND timeEnd >=[$DateTime]" -all
+    
+    # iterate through raw results, adding unique entries to a hashtable
+    $TimeEntryUnique = @{}
+    foreach ($t in $TimeEntryRaw) {
+        $key = $t.chargeToId, $t.enteredBy -join '-'
+        if (-not $TimeEntryUnique.ContainsKey($key)) {
+            $TimeEntryUnique[$key] = $t
+        }
+    }
+    $TimeEntryUnique = $TimeEntryUnique.Values
+
+    if ($All) {
+        return $TimeEntryRaw
+    }
+    else {
+        return $TimeEntryUnique
+    }
+}
+
+function Get-CWMTicketsWorkedTodayPerTechHelper {
+    <#
+    .SYNOPSIS
+        Gets count of unique tickets worked in the day for each tech and restricts the output to only the technician and the count
+    #>
+    [CmdletBinding()]
+    $TicketByTechUnique = Get-CWMTicketsWorkedToday | Group-Object -Property enteredBy
+    foreach ($Ticket in $TicketByTechUnique) {
+        $count = $Ticket.Count
+        $obj = [PSCustomObject]@{
+            Technician    = $Ticket.Name
+            TicketsWorked = $count
+        }
+        Write-Output $obj
+    }
+}
+
+function Get-CWMTechByBoard {
+    <#
+    .SYNOPSIS
+        A helper function that returns all Support techs and managers by board.
+    .DESCRIPTION
+        A helper function that returns all Support techs and managers by board.  Managers are included and will be listed under multiple boards if they in fact manage multiple boards.
+        Information returned includes the tech's ID, CWMName, FullName, FirstName, LastName, Email, Team, LastLogin, and DateHired.
+    #>
+    
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $false)]
+        [string[]]$BoardCollection = @(
+            'After Hours'
+            'Build Team'
+            'Dispatch'
+            'Escalations'
+            'Field Services'
+            'Onboarding'
+            'Staff Aug'
+            'Team 1'
+            'Team 2'
+            'Team 3'
+        )
+    )
+    
+    $Board = Get-CWMServiceBoard -all | Where-Object {$BoardCollection -contains $_.name}
+    foreach ($b in $Board) {
+        $BoardTeam = Get-CWMBoardTeam -parentId $b.id
+        foreach ($t in $BoardTeam) {
+            $Member = $t.members
+            foreach ($m in $Member) {
+                $Tech = Get-CWMMember -id $m
+                $obj = [PSCustomObject]@{
+                    Id = $Tech.id
+                    CWMName = $Tech.identifier
+                    FullName = $Tech.firstname + ' ' + $Tech.lastname
+                    FirstName = $Tech.firstname
+                    LastName = $Tech.lastname
+                    Email = $Tech.primaryEmail
+                    Team = $t.name
+                    LastLogin = $Tech.lastLogin
+                    DateHired = $Tech.hireDate
+                }
+                Write-Output $obj
+            }
+        }
+    }
+}
+
 ########################################
 #endregion HELPER Functions

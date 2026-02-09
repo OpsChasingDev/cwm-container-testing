@@ -141,7 +141,7 @@ while ($true) {
         New-CWMLog -Type "Info" -Message "Completed report"
     }
     catch {
-        New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
+        New-CWMLog -Type "Error" -Message "Failed to generate $script:appName report: $($_.Exception.Message)"
     }
 
     #############################

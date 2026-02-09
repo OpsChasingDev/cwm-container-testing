@@ -2,7 +2,7 @@
 #region APP DESCRIPTION
 #######################
 
-$script:appName = "appPOCOpenTicket"
+$script:appName = "appTicketsWorkedToday"
 $FrequencyMinutes = 2
 
 ##########################
@@ -51,74 +51,70 @@ catch {
 #region APP FUNCTIONS
 #####################
 
-function New-CWMPOCOpenTicketReport {
+function New-CWMTicketsWorkedTodayReport {
     <#
     .SYNOPSIS
-        Generates a CSV and HTML report for opened tickets with a contact labeled "Owner","POC","VIP","Primary Contact", or "Decision Maker".
+        Generates a CSV and HTML report for showing real-time statistics on tickets by tech in the current day.
     .DESCRIPTION
-        Generates a CSV and HTML report for opened tickets with a contact labeled "Owner","POC","VIP","Primary Contact", or "Decision Maker".
+        Generates a CSV and HTML report for showing real-time statistics on tickets by tech in the current day.
     .EXAMPLE
-        PS C:\> (Get-CWMFullTicket -Board "Team 1","Team 2","Team 3","Escalations","Build Team","Staff Aug").id | New-CWMPOCOpenTicketReport
-        Gets all tickets on the described boards and generates the csv and html reports at the current location.
+        PS C:\> Get-CWMTicketsWorkedTodayStatistics | New-CWMTicketsWorkedTodayReport
     #>
-    
     [CmdletBinding()]
     param (
         [Parameter(Mandatory,
-            ValueFromPipeline)]
-        [int]$TicketID,
+            ValueFromPipelineByPropertyName)]
+        [string[]]$TechId,
+
+        [string[]]$BoardFilter = @(
+            "After Hours"
+            "Build Team"
+            "Dispatch"
+            "Escalations"
+            "Field Services"
+            "Onboarding"
+            "Staff Aug"
+            "Team 1"
+            "Team 2"
+            "Team 3"
+        ),
 
         [ValidatePattern('([0-9]|[A-Z])\.csv$')]
         [Parameter(HelpMessage = "Enter a full file path and name ending in .csv")]
-        [string]$CSVPath = (Get-Location).Path + "\CWMReopenedTicketReport.csv",
+        [string]$CSVPath = (Get-Location).Path + "\CWMTicketsWorkedTodayReport.csv",
 
         [ValidatePattern('([0-9]|[A-Z])\.html$')]
         [Parameter(HelpMessage = "Enter a full file path and name ending in .html")]
-        [string]$HTMLPath = (Get-Location).Path + "\CWMReopenedTicketReport.html",
+        [string]$HTMLPath = (Get-Location).Path + "\CWMTicketsWorkedTodayReport.html",
 
         [int]$TotalItems,
 
         [int]$UTCTimeZone = -5
     )
-    
+
     BEGIN {
-        $Today = Get-Date
         $ItemIteration = 0
         $ObjCollection = @()
-        $ContactLabelCol = @("Owner", "POC", "VIP", "Primary Contact", "Decision Maker")
+
+        $TechByBoard = Get-CWMTechByBoard
     }
 
     PROCESS {
         $ItemIteration++
 
-        $BaseStat = Get-CWMTicket -id $TicketID
+        $CurrentTech = $_.TechId
+        $Board = $TechByBoard | Where-Object { $_.CWMName -eq $CurrentTech }
         
-        if ($BaseStat.contact) {
-            $ContactLabelName = (Get-CWMContact -id $BaseStat.contact.id).types.name
-    
-            if ($ContactLabelName -and (Compare-Object $ContactLabelName $ContactLabelCol -IncludeEqual -ExcludeDifferent)) {
-                $TicketAge = ($Today - ($BaseStat._info.dateEntered).AddHours($UTCTimeZone)).Days
-                
-                $obj = [PSCustomObject]@{
-                    TicketID    = $BaseStat.id
-                    Company     = $BaseStat.company.name
-                    Contact     = $BaseStat.contact.name
-                    Board       = $BaseStat.board.name
-                    Summary     = $BaseStat.summary
-                    Status      = $BaseStat.status.name
-                    Resource    = $BaseStat.resources
-                    Priority    = $BaseStat.priority.name
-                    TicketAge   = $TicketAge
-                    DateEntered = $BaseStat._info.dateEntered.ToShortDateString()
-                }
-                $ObjCollection += $obj
+        if ($boardFilter -contains $Board.Team) {
+            $obj = [PSCustomObject]@{
+                Technician           = $_.TechFullName
+                Board                = $Board.Team
+                TicketsWorked        = $_.TicketsWorked ## property specific to this report
+                TotalTimeEntries     = $_.TotalTimeEntries ## property specific to this report
+                TotalHours           = [math]::Round($_.TotalHours, 1) ## property specific to this report
+                AvgTimeEntryDuration = [math]::Round($_.AvgTimeEntryDuration, 1) ## property specific to this report
             }
-            else {
-                Write-Verbose -Message "Ticket $TicketID does not have a contact labeled with any of these options: $ContactLabelCol."
-            }
-        }
-        else {
-            Write-Verbose -Message "Ticket $TicketID does not have a contact."
+            $ObjCollection += $obj
         }
 
         if ($TotalItems -and $ItemIteration -le $TotalItems) {
@@ -145,21 +141,12 @@ while ($true) {
     #region APP SPECIFIC LOGIC
     ##########################
 
-    # Retrieve all ticket IDs from specified boards
-    try {
-        $Id = (Get-CWMFullTicket -Board $boardsEnv -ErrorAction Stop).id
-        New-CWMLog -Type "Info" -Message "Retrieved $($Id.Count) tickets from specified boards"
-    }
-    catch {
-        New-CWMLog -Type "Error" -Message "Failed to retrieve tickets: $($_.Exception.Message)"
-    }
-
-    # Generate appPOCOpenTicket report
+    # Generate appTicketsWorkedToday report
     try {
         New-CWMLog -Type "Info" -Message "Generating report $script:appName..."
-        $Id | New-POCOpenTicketReport `
-            -CSVPath "$dataPath/appPOCOpenTicket.csv" `
-            -HTMLPath "$dataPath/appPOCOpenTicket.html"
+        Get-CWMTicketsWorkedTodayStatistics | New-CWMTicketsWorkedTodayReport `
+            -CSVPath "$dataPath/appTicketsWorkedToday.csv" `
+            -HTMLPath "$dataPath/appTicketsWorkedToday.html"
         New-CWMLog -Type "Info" -Message "Completed report $script:appName"
     }
     catch {

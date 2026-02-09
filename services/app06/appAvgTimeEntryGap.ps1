@@ -133,17 +133,17 @@ while ($true) {
         New-CWMLog -Type "Error" -Message "Failed to retrieve tickets: $($_.Exception.Message)"
     }
 
-    # Generate reopened ticket report
+    # Generate appAvgTimeEntryGap report
     try {
-        New-CWMLog -Type "Info" -Message "Generating report..."
+        New-CWMLog -Type "Info" -Message "Generating report $script:appName..."
         $Id | New-CWMAvgTimeEntryGapReport `
             -CSVPath "$dataPath/appAvgTimeEntryGap.csv" `
             -HTMLPath "$dataPath/appAvgTimeEntryGap.html" `
             -ItemsToDisplay 40
-        New-CWMLog -Type "Info" -Message "Completed report"
+        New-CWMLog -Type "Info" -Message "Completed report $script:appName"
     }
     catch {
-        New-CWMLog -Type "Error" -Message "Failed to generate time since last time entry report: $($_.Exception.Message)"
+        New-CWMLog -Type "Error" -Message "Failed to generate $script:appName report: $($_.Exception.Message)"
     }
 
     #############################
