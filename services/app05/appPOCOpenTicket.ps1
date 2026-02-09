@@ -157,7 +157,7 @@ while ($true) {
     # Generate appPOCOpenTicket report
     try {
         New-CWMLog -Type "Info" -Message "Generating report $script:appName..."
-        $Id | New-POCOpenTicketReport `
+        $Id | New-CWMPOCOpenTicketReport `
             -CSVPath "$dataPath/appPOCOpenTicket.csv" `
             -HTMLPath "$dataPath/appPOCOpenTicket.html"
         New-CWMLog -Type "Info" -Message "Completed report $script:appName"
