@@ -650,5 +650,55 @@ function Get-CWMAvgTimeEntryGap {
     END {}
 }
 
+function Get-CWMAvgTimeEntryDuration {
+    <#
+    .SYNOPSIS
+        Returns the average amount of time entered per entry in minutes for any given ticket.
+    .DESCRIPTION
+        Returns the average amount of time entered per entry in minutes for any given ticket.
+    #>
+    
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory,
+            ValueFromPipeline)]
+        [int]$TicketID,
+
+        [int]$UTCTimeZone = -5
+    )
+
+    BEGIN {}
+
+    PROCESS {
+        ## get all time entries
+        $TimeEntryDateTime = Get-CWMTimeEntry -condition "(chargeToType='ServiceTicket' OR chargeToType='ProjectTicket') AND chargeToId=$TicketID" -all
+        $TimeEntryDurationCol = @()
+
+        ## handling edge cases
+        if ($TimeEntryDateTime.count -eq 0) {
+            Write-Verbose "Ticket $TicketID has no time entries."
+            return $null
+        }
+        else {
+            foreach ($TimeEntry in $TimeEntryDateTime) {
+                $TimeEntryDurationCol += $TimeEntry.actualHours
+                Write-Verbose "Time entry duration: $($TimeEntry.actualHours)"
+            }
+        }
+
+        ## create custom object to hold avg duration and total time entry count
+        $AverageTimeEntryDuration = [math]::Round((($TimeEntryDurationCol | Measure-Object -Average).Average) * 60, 0)
+        $obj = [PSCustomObject]@{
+            Duration = $AverageTimeEntryDuration
+            Count = $TimeEntryDateTime.count
+        }
+
+        Write-Verbose "Ticket $TicketID has an average time entry duration of $AverageTimeEntryDuration minutes."
+        Write-Output $obj
+    }
+    
+    END {}
+}
+
 ########################################
 #endregion HELPER Functions
