@@ -91,6 +91,8 @@ jobs:
                     value: "80"
                   - name: CWM_SERVER
                     value: ${{ secrets.CWM_SERVER }}
+                  - name: TICKETING_BOARDS
+                    value: ${{ vars.TICKETING_BOARDS }}
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data

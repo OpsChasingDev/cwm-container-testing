@@ -20,6 +20,31 @@ fetch('/config/environment')
   })
   .catch(error => console.log('Environment config not available'));
 
+// Load and populate board options from configuration
+fetch('/config/ticketing-boards')
+  .then(response => response.json())
+  .then(data => {
+    if (data.boards && data.boards.length > 0) {
+      const boardSelect = document.getElementById('board-select');
+      if (boardSelect) {
+        // Clear existing options except the "All Boards" option
+        const allBoardsOption = boardSelect.querySelector('option[value="all"]');
+        boardSelect.innerHTML = '';
+        if (allBoardsOption) {
+          boardSelect.appendChild(allBoardsOption);
+        }
+        
+        // Add board options from configuration
+        data.boards.forEach(board => {
+          const option = document.createElement('option');
+          option.value = board;
+          option.textContent = board;
+          boardSelect.appendChild(option);
+        });
+      }
+    }
+  });
+
 function loadPage(event, url) {
     event.preventDefault(); // Prevent the link from navigating to the URL
     // clear interval defined in var "interval" to prevent multiple loops running

@@ -93,6 +93,21 @@ app.get('/config/environment', (req, res) => {
 });
 
 /**
+ * Endpoint to provide ticketing boards configuration from environment variable
+ */
+app.get('/config/ticketing-boards', (req, res) => {
+  const ticketingBoardsStr = process.env.TICKETING_BOARDS || '';
+  let boards = [];
+  
+  if (ticketingBoardsStr) {
+    // Parse comma-separated values and trim whitespace
+    boards = ticketingBoardsStr.split(',').map(board => board.trim()).filter(board => board.length > 0);
+  }
+  
+  res.json({ boards });
+});
+
+/**
  * Health check endpoint for container orchestration
  */
 app.get('/health', (req, res) => {
