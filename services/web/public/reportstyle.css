@@ -19,3 +19,11 @@ th {
     color: black;
     border: 1px solid black;
 }
+
+tr {
+    transition: background-color 0.2s ease;
+}
+
+tbody tr:hover {
+    background-color: rgba(80, 183, 224, 0.15);
+}
