@@ -39,8 +39,8 @@ body {
   /* controlling the ability to scroll in the viewport*/
   overflow: auto;
   position: fixed;
-  width: 70%;
-  height: 70%;
+  width: calc(100% - 280px);
+  height: calc(100vh - 140px);
   top: 120px;
   left: 240px;
   padding: 20px;
