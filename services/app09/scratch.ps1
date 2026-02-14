@@ -13,5 +13,5 @@ $t = Get-CWMFullTicket -condition "dateEntered > [$((Get-Date).ToUniversalTime()
 # get tickets entered in the last 7 days on the Team 1 or Team 2 boards
 $t = Get-CWMFullTicket -condition "dateEntered > [$((Get-Date).ToUniversalTime().AddDays(-7))] AND (board/name = 'Team 1' OR board/name = 'Team 2')" -ClosedStatus All
 
-# see the tickets' summaries
-$t.summary
+# new way to query tickets entered in the last 7 days on the Team 1 or Team 2 boards
+$t = Get-CWMFullTicket -BoardName 'Team 1','Team 2' -ClosedStatus All -LastDays 7
