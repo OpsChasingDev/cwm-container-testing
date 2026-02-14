@@ -269,6 +269,9 @@ function Get-CWMFullTicket {
 
         [Parameter(ParameterSetName = "default")]
         [string[]]$Resource,
+
+        [Parameter(ParameterSetName = "default")]
+        [int]$LastDays,
         
         [Parameter(ParameterSetName = "default")]
         [Parameter(ParameterSetName = "condition",
@@ -296,7 +299,7 @@ function Get-CWMFullTicket {
     [System.Collections.ArrayList]$ResultCol = @()
     $CurrentPage = 1
 
-    # logic for Resource param
+    # logic for adding Resource param to Condition
     if ($Resource) {
         $ResourceCondition = Construct-CWMCondition -Type Resources -Value $Resource
         if ($Condition) {
@@ -308,7 +311,7 @@ function Get-CWMFullTicket {
         }
     }
 
-    # logic for Company param
+    # logic for adding Company param to Condition
     if ($Company) {
         $CompanyCondition = Construct-CWMCondition -Type Company -Value $Company
         if ($Condition) {
@@ -320,7 +323,7 @@ function Get-CWMFullTicket {
         }
     }
     
-    # logic for Board param
+    # logic for adding Board param to Condition
     if ($Board) {
         $BoardCondition = Construct-CWMCondition -Type Board -Value $Board
         if ($Condition) {
