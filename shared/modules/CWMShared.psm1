@@ -271,14 +271,16 @@ function Get-CWMFullTicket {
         [string[]]$Resource,
 
         [Parameter(ParameterSetName = "default")]
-        [int]$LastDays,
-        
-        [Parameter(ParameterSetName = "default")]
         [Parameter(ParameterSetName = "condition",
-            Position = 2)]
+        Position = 2)]
         [ValidateSet("Closed", "Open", "All")]
         [string]$ClosedStatus = "Open",
 
+        [Parameter(ParameterSetName = "default")]
+        [Parameter(ParameterSetName = "condition",
+            Position = 3)]
+        [int]$LastDays,
+        
         [Parameter(ParameterSetName = "default")]
         [Parameter(ParameterSetName = "condition")]
         [switch]$IncludeChildTicket,
@@ -352,6 +354,13 @@ function Get-CWMFullTicket {
         Write-Verbose "Condition is: << $Condition >>"
     }
     else {}
+
+    # logic for LastDays param
+    if ($LastDays) {
+        $Date = (Get-Date).ToUniversalTime().AddDays(-$LastDays)
+        $Condition = $Condition.Insert(($Condition.Length), " AND dateEntered > [$Date]")
+        Write-Verbose "Condition is: << $Condition >>"
+    }
 
     # loop to iterate through pages of ticket results until no more exist
     do {
