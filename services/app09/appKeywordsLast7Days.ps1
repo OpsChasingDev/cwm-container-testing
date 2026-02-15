@@ -68,7 +68,7 @@ while ($true) {
 
     # Retrieve all tickets from specified boards
     try {
-        $Tickets = Get-CWMFullTicket -Board $boardsEnv -ClosedStatus All -LastDays 7 -Verbose # uses dateEntered as a condition to the REST API to only retrieve tickets created in the last 7 days, which improves performance by reducing the number of tickets returned and processed
+        $Tickets = Get-CWMFullTicket -Board $boardsEnv -ClosedStatus All -LastDays 7 # uses dateEntered as a condition to the REST API to only retrieve tickets created in the last 7 days, which improves performance by reducing the number of tickets returned and processed
         New-CWMLog -Type "Info" -Message "Retrieved $($Tickets.Count) tickets from specified boards created on or after $((Get-Date).AddDays(-7).ToUniversalTime().AddHours(-5)) EST"
     }
     catch {
