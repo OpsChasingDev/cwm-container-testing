@@ -69,4 +69,8 @@ foreach ($k in $TopKeywords) {
 }
 Write-Output $Collection
 
+# turn the "Tickets" property into a string of the numbers separated by spaces so they can all show up in a CSV export
+$Collection | ForEach-Object { $_.Tickets = ($_.Tickets -join " ") }
+$Collection | Export-Csv -Path "KeywordTickets.csv" -NoTypeInformation
+
 #endregion
