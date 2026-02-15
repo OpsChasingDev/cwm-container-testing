@@ -1,4 +1,4 @@
-name: Build and Deploy App08
+name: Build and Deploy App09
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
       - main
       - STAGING
     paths:
-      - 'services/app08/**'
+      - 'services/app09/**'
       - 'shared/**'
-      - '.github/workflows/deploy-app08.yml'
+      - '.github/workflows/deploy-app09.yml'
 
 jobs:
   test:
@@ -39,10 +39,10 @@ jobs:
             }
           '
 
-      - name: Check app08 script syntax
+      - name: Check app09 script syntax
         run: |
           pwsh -Command '
-            $script = "./services/app08/appTicketsWorkedToday.ps1"
+            $script = "./services/app09/appKeywordsLast7Days.ps1"
             try {
               [System.Management.Automation.PSParser]::Tokenize((Get-Content $script), [ref]$null) | Out-Null
               Write-Host "Script syntax: OK - $script"
@@ -56,8 +56,8 @@ jobs:
         run: |
           pwsh -Command '
             $required = @(
-              "services/app08/Dockerfile",
-              "services/app08/appTicketsWorkedToday.ps1",
+              "services/app09/Dockerfile",
+              "services/app09/appKeywordsLast7Days.ps1",
               "shared/modules/CWMShared.psm1"
             )
             $missing = @()
@@ -76,7 +76,7 @@ jobs:
       - name: Verify required environment variables in deployment
         run: |
           pwsh -Command '
-            $deploymentFile = "./.github/workflows/deploy-app08.yml"
+            $deploymentFile = "./.github/workflows/deploy-app09.yml"
             $requiredVars = @("CWM_CLIENTID", "CWM_COMPANY", "CWM_PRIVATEKEY", "CWM_PUBLICKEY", "CWM_SERVER")
             $content = Get-Content $deploymentFile -Raw
             $missing = @()
@@ -113,31 +113,31 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build app08 image
-        id: docker_build_app08
+      - name: Build app09 image
+        id: docker_build_app09
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./services/app08/Dockerfile
+          file: ./services/app09/Dockerfile
           push: true
           tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app08:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
-            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app08:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app09:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app09:${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
 
       - name: Login to Azure
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy App08 to Azure Container Instances
+      - name: Deploy App09 to Azure Container Instances
         run: |
           # Create a temporary deployment file with substituted values
-          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-app08' || 'cwm-staging-app08' }}
+          CONTAINER_GROUP_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-app09' || 'cwm-staging-app09' }}
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'prod' || 'staging' }}-${{ github.sha }}
           DATA_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
           LOGGING_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-logging' || 'cwm-staging-shared-logging' }}
           
-          cat > /tmp/aci-app08-deployment.yaml << EOF
+          cat > /tmp/aci-app09-deployment.yaml << EOF
           apiVersion: '2021-09-01'
           location: ${{ secrets.AZURE_LOCATION }}
           name: $CONTAINER_GROUP_NAME
@@ -154,16 +154,16 @@ jobs:
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
-            - name: app08
+            - name: app09
               properties:
-                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app08:$IMAGE_TAG
+                image: ${{ secrets.ACR_LOGIN_SERVER }}/cwm-app09:$IMAGE_TAG
                 resources:
                   requests:
                     cpu: 0.5
                     memoryInGb: 0.5
                 environmentVariables:
                   - name: SERVICE_NAME
-                    value: app08
+                    value: app09
                   - name: LOG_LEVEL
                     value: Info
                   - name: CWM_ClientID
@@ -200,4 +200,4 @@ jobs:
           # Create the container group from the deployment file
           az container create \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --file /tmp/aci-app08-deployment.yaml
+            --file /tmp/aci-app09-deployment.yaml
