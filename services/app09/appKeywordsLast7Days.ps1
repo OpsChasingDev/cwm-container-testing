@@ -78,7 +78,7 @@ while ($true) {
     try {
         New-CWMLog -Type "Info" -Message "Generating report..."
         # Create and group keywords from ticket summaries, excluding common words
-        $exceptions = "|","new","YOUR","TICKET","RE:","-",":","&","issue","add","a", "the", "and", "or", "but", "is", "are", "was", "were", "in", "on", "at", "to", "for", "with", "cannot", "be", "by", "of", "from", "as", "that", "this", "it", "its", "if", "then", "else", "when", "while", "do", "does", "did", "not", "no", "yes", "can", "will", "just", "up", "down", "out", "over", "under", "again", "further", "here", "there", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "only", "own", "same", "so", "than", "too", "very", "should", "now"
+        $exceptions = "|","new","request","YOUR","TICKET","RE:","-",":","&","issue","add","a", "the", "and", "or", "but", "is", "are", "was", "were", "in", "on", "at", "to", "for", "with", "cannot", "be", "by", "of", "from", "as", "that", "this", "it", "its", "if", "then", "else", "when", "while", "do", "does", "did", "not", "no", "yes", "can", "will", "just", "up", "down", "out", "over", "under", "again", "further", "here", "there", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "only", "own", "same", "so", "than", "too", "very", "should", "now"
         $keywords = $Tickets | ForEach-Object { ($_.summary).Split(" ").Trim() | Where-Object { $_ -notin $exceptions -and $_ } } # separates summary strings by spaces, trims whitespace, and excludes common words and empty results
         $TopKeywords = $keywords | Group-Object | Sort-Object -Property Count -Descending -Top 20 | Select-Object -ExpandProperty Name
 
