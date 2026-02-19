@@ -178,6 +178,8 @@ jobs:
                     value: ${{ secrets.CWM_SERVER }}
                   - name: TICKETING_BOARDS
                     value: ${{ vars.TICKETING_BOARDS }}
+                  - name: UTCTimeZone
+                    value: ${{ vars.UTC_TIME_ZONE }}
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
