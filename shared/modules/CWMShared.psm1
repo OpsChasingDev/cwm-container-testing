@@ -829,25 +829,19 @@ function Get-CWMTechByBoard {
     .DESCRIPTION
         A helper function that returns all Support techs and managers by board.  Managers are included and will be listed under multiple boards if they in fact manage multiple boards.
         Information returned includes the tech's ID, CWMName, FullName, FirstName, LastName, Email, Team, LastLogin, and DateHired.
+        This version of the function is designed to return techs/managers for multiple boards, as defined by the TICKETING_BOARDS environment variable, which should be a comma-separated list of board names.  If you want to return techs/managers for only one board, you can still use this function and just have one board name in the TICKETING_BOARDS environment variable.
     #>
     
-    
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $false)]
-        [string[]]$BoardCollection = @(
-            'After Hours'
-            'Build Team'
-            'Dispatch'
-            'Escalations'
-            'Field Services'
-            'Onboarding'
-            'Staff Aug'
-            'Team 1'
-            'Team 2'
-            'Team 3'
-        )
-    )
+    try {
+        if (-not (Test-Path env:TICKETING_BOARDS)) {
+            throw "Environment variable 'TICKETING_BOARDS' not found."
+        }
+        [string[]]$BoardCollection = $env:TICKETING_BOARDS -split ','
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to retrieve TICKETING_BOARDS environment variable: $($_.Exception.Message)"
+        throw
+    }
     
     $Board = Get-CWMServiceBoard -all | Where-Object {$BoardCollection -contains $_.name}
     foreach ($b in $Board) {
