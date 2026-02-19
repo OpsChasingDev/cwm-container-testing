@@ -775,15 +775,28 @@ function Get-CWMTicketsWorkedToday {
     .DESCRIPTION
         Outputs information about time entries for the current day.  If the -All switch is used, all time entries for the current day are returned.  Otherwise, only unique time entries are returned.
         Unique time entries means that if a tech has entered time into the same ticket more than once in the day, only the first entry is returned.
+        This version of the function requires a UTCTimeZone environment variable to be set, which should be the number of hours to add to UTC time to get your local time.  For example, if you are in Eastern Standard Time, you would set UTCTimeZone to -5.  If you are in Central European Time, you would set UTCTimeZone to +1.
     #>
     
     [CmdletBinding()]
     param(
-        [switch]$All = $false
+        [switch]$All = $false,
+
+        [int]$UTCTimeZone = $env:UTCTimeZone
     )
 
+    try {
+        if (-not (Test-Path env:UTCTimeZone)) {
+            throw "Environment variable 'UTCTimeZone' not found."
+        }
+    }
+    catch {
+        New-CWMLog -Type "Error" -Message "Failed to retrieve UTCTimeZone environment variable: $($_.Exception.Message)"
+        throw
+    }
+
     # get all time entries for the current day
-    $date = Get-Date
+    $date = (Get-Date).ToUniversalTime().AddHours($UTCTimeZone)
     $DateTime = ($date.AddHours(-$date.Hour).AddMinutes(-$date.Minute).AddSeconds(-$date.Second)).ToUniversalTime().DateTime
     $TimeEntryRaw = Get-CWMTimeEntry -condition "(chargeToType='ServiceTicket' OR chargeToType='ProjectTicket') AND timeEnd >=[$DateTime]" -all
     
