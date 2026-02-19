@@ -66,18 +66,7 @@ function New-CWMTicketsWorkedTodayReport {
             ValueFromPipelineByPropertyName)]
         [string[]]$TechId,
 
-        [string[]]$BoardFilter = @(
-            "After Hours"
-            "Build Team"
-            "Dispatch"
-            "Escalations"
-            "Field Services"
-            "Onboarding"
-            "Staff Aug"
-            "Team 1"
-            "Team 2"
-            "Team 3"
-        ),
+        [string[]]$BoardFilter = $boardsEnv,
 
         [ValidatePattern('([0-9]|[A-Z])\.csv$')]
         [Parameter(HelpMessage = "Enter a full file path and name ending in .csv")]
