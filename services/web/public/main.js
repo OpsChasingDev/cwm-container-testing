@@ -47,6 +47,13 @@ function switchTab(event, tabId) {
     event.target.classList.add('active');
 }
 
+// Handle power control button clicks
+function handlePowerControl(event, containerName) {
+    event.stopPropagation(); // Prevent triggering loadPage
+    console.log('Power control button clicked for container:', containerName);
+    // Placeholder for future functionality: fetch status, display current state, toggle power
+}
+
 
 // Load and update header based on environment on page load
 fetch('/config/environment')
