@@ -6,6 +6,48 @@ var interval;
 var cwmServer = null; // Will be loaded from server config
 var environment = 'production'; // Will be loaded from server config
 
+// Create a tabbed viewport structure
+function createTabbedViewport(reportContent) {
+    const tabsHTML = `
+        <div class="tabs-container">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="switchTab(event, 'data-tab')">Data</button>
+                <button class="tab-button" onclick="switchTab(event, 'logs-tab')">Logs</button>
+            </div>
+            <div id="data-tab" class="tab-content active">
+                ${reportContent}
+            </div>
+            <div id="logs-tab" class="tab-content">
+                <p>Container logs will appear here...</p>
+            </div>
+        </div>
+    `;
+    return tabsHTML;
+}
+
+// Handle tab switching
+function switchTab(event, tabId) {
+    event.preventDefault();
+    
+    // Hide all tab contents
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(content => content.classList.remove('active'));
+    
+    // Remove active class from all tab buttons
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => button.classList.remove('active'));
+    
+    // Show the selected tab content and activate the button
+    const selectedTabContent = document.getElementById(tabId);
+    if (selectedTabContent) {
+        selectedTabContent.classList.add('active');
+    }
+    
+    // Add active class to the clicked button
+    event.target.classList.add('active');
+}
+
+
 // Load and update header based on environment on page load
 fetch('/config/environment')
   .then(response => response.json())
@@ -79,7 +121,10 @@ function loadReport(url) {
     xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
-                document.getElementById("viewport").innerHTML = xhr.responseText;
+                // Wrap the report content in a tabbed interface
+                const tabbedContent = createTabbedViewport(xhr.responseText);
+                document.getElementById("viewport").innerHTML = tabbedContent;
+                
                 var csvName = appName + '.csv';
                 selectedReportCSV = csvName;
 
