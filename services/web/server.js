@@ -18,22 +18,28 @@ const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
 const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID;
 const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
 
-// Whitelist of allowed container names (report containers)
-const ALLOWED_CONTAINERS = [
-  'appReopenedTicket',
-  'appTimeSinceLastTimeEntry',
-  'appPOCOpenTicket',
-  'appAvgTimeEntryGap',
-  'appAvgTimeEntryDuration',
-  'appTicketsWorkedToday',
-  'appKeywordsLast7Days',
-  'appTicketsWorkedLastDays_30'
-];
+// Whitelist of allowed container names (report containers) with mapping to ACI container group names
+// Maps app names (used in UI) to their corresponding Azure Container Instance container numbers
+const APP_TO_CONTAINER_MAP = {
+  'appReopenedTicket': 'app04',
+  'appTimeSinceLastTimeEntry': 'app03',
+  'appPOCOpenTicket': 'app05',
+  'appAvgTimeEntryGap': 'app06',
+  'appAvgTimeEntryDuration': 'app07',
+  'appTicketsWorkedToday': 'app08',
+  'appKeywordsLast7Days': 'app09',
+};
+
+const ALLOWED_CONTAINERS = Object.keys(APP_TO_CONTAINER_MAP);
 
 // Helper function to get container group name
-function getContainerGroupName(containerName) {
+function getContainerGroupName(appName) {
+  const containerNum = APP_TO_CONTAINER_MAP[appName];
+  if (!containerNum) {
+    throw new Error(`Unknown container mapping for app: ${appName}`);
+  }
   const env = ENVIRONMENT === 'production' ? 'prod' : 'staging';
-  return `cwm-${env}-${containerName}`;
+  return `cwm-${env}-${containerNum}`;
 }
 
 // Helper function to validate container name
@@ -279,11 +285,12 @@ app.get('/container-status/:containerName', (req, res) => {
     console.log(`Container status query: ${groupName} -> ${state}`);
     
   } catch (error) {
-    console.error(`Error querying container status: ${error.message}`);
-    // Return stopped state if unable to query (safer default)
-    res.status(200).json({ 
+    console.error(`Error querying container status for ${containerName}: ${error.message}`);
+    // Return error state if unable to query
+    res.status(500).json({ 
       state: 'unknown',
       error: 'Unable to query container status',
+      details: error.message,
       timestamp: new Date().toISOString()
     });
   }
