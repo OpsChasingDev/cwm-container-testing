@@ -10,6 +10,7 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = '/mnt/cwm-data';
+const LOGS_DIR = '/mnt/cwm-logs';
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -108,6 +109,57 @@ app.get('/config/ticketing-boards', (req, res) => {
 });
 
 /**
+ * Serve latest log file for a specific container
+ * Frontend requests /logs/containerName -> server finds latest log file and returns content
+ */
+app.get('/logs/:containerName', (req, res) => {
+  const { containerName } = req.params;
+  
+  // Security: prevent directory traversal
+  if (containerName.includes('..') || containerName.includes('/')) {
+    return res.status(400).send('Invalid container name');
+  }
+
+  try {
+    // Check if logs directory exists
+    if (!fs.existsSync(LOGS_DIR)) {
+      console.log(`Logs directory not found: ${LOGS_DIR}`);
+      return res.status(404).json({ error: 'Logs directory not found' });
+    }
+
+    // Get all files in the logs directory
+    const files = fs.readdirSync(LOGS_DIR);
+    
+    // Filter for log files matching the container name pattern: {containerName}_YYYY-MM-DD_HH-MM-SS.log
+    const logFiles = files.filter(file => 
+      file.startsWith(containerName) && file.endsWith('.log')
+    );
+    
+    if (logFiles.length === 0) {
+      console.log(`No log files found for container: ${containerName}`);
+      return res.status(404).json({ error: `No log files found for container: ${containerName}` });
+    }
+
+    // Sort files to find the latest (most recent timestamp)
+    // Assuming format: {containerName}_YYYY-MM-DD_HH-MM-SS.log
+    const latestLogFile = logFiles.sort().pop();
+    const logFilePath = path.join(LOGS_DIR, latestLogFile);
+    
+    // Read and return the log file content
+    const logContent = fs.readFileSync(logFilePath, 'utf-8');
+    
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(logContent);
+    
+    console.log(`Serving log file: ${latestLogFile} for container: ${containerName}`);
+    
+  } catch (error) {
+    console.error(`Error serving log file: ${error.message}`);
+    res.status(500).json({ error: 'Error loading log file' });
+  }
+});
+
+/**
  * Health check endpoint for container orchestration
  */
 app.get('/health', (req, res) => {
@@ -121,5 +173,6 @@ app.listen(PORT, () => {
   console.log(`CWM Custom Reporting Web Server listening on port ${PORT}`);
   console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
   console.log(`Reading reports from: ${DATA_DIR}`);
+  console.log(`Reading logs from: ${LOGS_DIR}`);
   console.log(`Health check available at: http://localhost:${PORT}/health`);
 });

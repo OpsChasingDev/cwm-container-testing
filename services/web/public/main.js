@@ -5,11 +5,13 @@ var descriptions = {};
 var interval;
 var cwmServer = null; // Will be loaded from server config
 var environment = 'production'; // Will be loaded from server config
+var currentContainerName = null; // Track which container's report is currently displayed
 
 // Create a tabbed viewport structure
-function createTabbedViewport(reportContent) {
+function createTabbedViewport(reportContent, containerName) {
+    currentContainerName = containerName;
     const tabsHTML = `
-        <div class="tabs-container">
+        <div class="tabs-container" data-container="${containerName}">
             <div class="tab-buttons">
                 <button class="tab-button active" onclick="switchTab(event, 'data-tab')">Data</button>
                 <button class="tab-button" onclick="switchTab(event, 'logs-tab')">Logs</button>
@@ -18,7 +20,7 @@ function createTabbedViewport(reportContent) {
                 ${reportContent}
             </div>
             <div id="logs-tab" class="tab-content">
-                <p>Container logs will appear here...</p>
+                <div class="logs-content" style="white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.5;">Loading logs...</div>
             </div>
         </div>
     `;
@@ -45,6 +47,34 @@ function switchTab(event, tabId) {
     
     // Add active class to the clicked button
     event.target.classList.add('active');
+    
+    // If switching to logs tab, fetch and display logs
+    if (tabId === 'logs-tab' && currentContainerName) {
+        fetchAndDisplayLogs(currentContainerName);
+    }
+}
+
+// Fetch and display logs for the current container
+function fetchAndDisplayLogs(containerName) {
+    const logsContentDiv = document.querySelector('.logs-content');
+    if (!logsContentDiv) return;
+    
+    logsContentDiv.textContent = 'Loading logs...';
+    
+    fetch(`/logs/${containerName}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(data => {
+            logsContentDiv.textContent = data;
+        })
+        .catch(error => {
+            console.error('Error fetching logs:', error);
+            logsContentDiv.textContent = `Error loading logs: ${error.message}`;
+        });
 }
 
 // Handle power control button clicks
@@ -129,7 +159,7 @@ function loadReport(url) {
         if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
                 // Wrap the report content in a tabbed interface
-                const tabbedContent = createTabbedViewport(xhr.responseText);
+                const tabbedContent = createTabbedViewport(xhr.responseText, appName);
                 document.getElementById("viewport").innerHTML = tabbedContent;
                 
                 var csvName = appName + '.csv';
