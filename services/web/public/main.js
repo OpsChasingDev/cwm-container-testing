@@ -48,9 +48,26 @@ function switchTab(event, tabId) {
     // Add active class to the clicked button
     event.target.classList.add('active');
     
+    // Update download button based on active tab
+    updateDownloadButton(tabId);
+    
     // If switching to logs tab, fetch and display logs
     if (tabId === 'logs-tab' && currentContainerName) {
         fetchAndDisplayLogs(currentContainerName);
+    }
+}
+
+// Update download button based on active tab
+function updateDownloadButton(tabId) {
+    const downloadButton = document.getElementById('downloadButton');
+    if (!downloadButton) return;
+    
+    if (tabId === 'logs-tab') {
+        downloadButton.textContent = 'Download Logs';
+        downloadButton.onclick = function() { downloadLogs(); };
+    } else {
+        downloadButton.textContent = 'Download CSV';
+        downloadButton.onclick = function() { download(); };
     }
 }
 
@@ -69,7 +86,11 @@ function fetchAndDisplayLogs(containerName) {
             return response.text();
         })
         .then(data => {
-            logsContentDiv.textContent = data;
+            // Reverse the logs so newest entries appear at the top
+            const lines = data.split('\n');
+            const reversedLines = lines.reverse();
+            const reversedContent = reversedLines.join('\n');
+            logsContentDiv.textContent = reversedContent;
         })
         .catch(error => {
             console.error('Error fetching logs:', error);
@@ -243,6 +264,22 @@ function download() {
         document.body.removeChild(element);
     } else {
         console.error("No report selected");
+    }
+}
+
+function downloadLogs() {
+    // Download logs for the current container
+    if (currentContainerName) {
+        var element = document.createElement('a');
+        // Use the API endpoint to serve the log file
+        var logsPath = '/download-logs/' + currentContainerName;
+        element.setAttribute('href', logsPath);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+    } else {
+        console.error("No container selected");
     }
 }
 

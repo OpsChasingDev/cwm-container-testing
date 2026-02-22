@@ -160,6 +160,58 @@ app.get('/logs/:containerName', (req, res) => {
 });
 
 /**
+ * Download endpoint for log files
+ * Frontend requests /download-logs/containerName -> server returns log file as downloadable attachment
+ */
+app.get('/download-logs/:containerName', (req, res) => {
+  const { containerName } = req.params;
+  
+  // Security: prevent directory traversal
+  if (containerName.includes('..') || containerName.includes('/')) {
+    return res.status(400).send('Invalid container name');
+  }
+
+  try {
+    // Check if logs directory exists
+    if (!fs.existsSync(LOGS_DIR)) {
+      console.log(`Logs directory not found: ${LOGS_DIR}`);
+      return res.status(404).send('Logs directory not found');
+    }
+
+    // Get all files in the logs directory
+    const files = fs.readdirSync(LOGS_DIR);
+    
+    // Filter for log files matching the container name pattern: {containerName}_YYYY-MM-DD_HH-MM-SS.log
+    const logFiles = files.filter(file => 
+      file.startsWith(containerName) && file.endsWith('.log')
+    );
+    
+    if (logFiles.length === 0) {
+      console.log(`No log files found for container: ${containerName}`);
+      return res.status(404).send(`No log files found for container: ${containerName}`);
+    }
+
+    // Sort files to find the latest (most recent timestamp)
+    // Assuming format: {containerName}_YYYY-MM-DD_HH-MM-SS.log
+    const latestLogFile = logFiles.sort().pop();
+    const logFilePath = path.join(LOGS_DIR, latestLogFile);
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${latestLogFile}"`);
+    
+    // Send the file
+    res.sendFile(logFilePath);
+    
+    console.log(`Downloading log file: ${latestLogFile} for container: ${containerName}`);
+    
+  } catch (error) {
+    console.error(`Error downloading log file: ${error.message}`);
+    res.status(500).send('Error downloading log file');
+  }
+});
+
+/**
  * Health check endpoint for container orchestration
  */
 app.get('/health', (req, res) => {
