@@ -6,6 +6,9 @@ var interval;
 var cwmServer = null; // Will be loaded from server config
 var environment = 'production'; // Will be loaded from server config
 var currentContainerName = null; // Track which container's report is currently displayed
+var containerStatusPoller = null; // Track the status polling interval
+var containerStates = {}; // Track state of containers {containerName: 'running'|'stopped'|'unknown'}
+var containerLastActionTime = {}; // Track when actions were last performed (for rate limiting)
 
 // Create a tabbed viewport structure
 function createTabbedViewport(reportContent, containerName) {
@@ -98,11 +101,219 @@ function fetchAndDisplayLogs(containerName) {
         });
 }
 
-// Handle power control button clicks
+// Handle power control button clicks - show confirmation modal
 function handlePowerControl(event, containerName) {
     event.stopPropagation(); // Prevent triggering loadPage
-    console.log('Power control button clicked for container:', containerName);
-    // Placeholder for future functionality: fetch status, display current state, toggle power
+    
+    const currentState = containerStates[containerName] || 'unknown';
+    const actionType = currentState === 'running' ? 'stop' : 'start';
+    const actionText = actionType === 'stop' ? 'Stop' : 'Start';
+    
+    showContainerConfirmation(containerName, actionType, actionText);
+}
+
+// Show confirmation modal
+function showContainerConfirmation(containerName, action, actionText) {
+    const modal = document.getElementById('powerControlModal');
+    if (!modal) return;
+    
+    const modalTitle = document.getElementById('powerControlModalTitle');
+    const modalMessage = document.getElementById('powerControlModalMessage');
+    const confirmButton = document.getElementById('powerControlConfirmBtn');
+    
+    modalTitle.textContent = `${actionText} Container`;
+    modalMessage.textContent = `Are you sure you want to ${action} the container for ${containerName}?`;
+    
+    confirmButton.onclick = function() {
+        modal.style.display = 'none';
+        executeContainerAction(containerName, action);
+    };
+    
+    modal.style.display = 'block';
+}
+
+// Close modal
+function closeContainerConfirmation() {
+    const modal = document.getElementById('powerControlModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Execute container start/stop action
+function executeContainerAction(containerName, action) {
+    const button = document.querySelector(`button[onclick*="handlePowerControl"][onclick*="${containerName}"]`);
+    if (!button) return;
+    
+    // Rate limiting: prevent rapid consecutive actions
+    const lastAction = containerLastActionTime[containerName] || 0;
+    if (Date.now() - lastAction < 5000) {
+        alert('Please wait before performing another action on this container');
+        return;
+    }
+    
+    // Set button to transitioning state
+    setButtonTransitioning(button, true);
+    containerStates[containerName] = 'transitioning';
+    updatePowerButtonIcon(button, 'transitioning');
+    
+    fetch(`/container-action/${containerName}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: action })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log(`Container action ${action} initiated for ${containerName}`);
+        containerLastActionTime[containerName] = Date.now();
+        
+        // Poll for state change with timeout
+        pollContainerState(containerName, action, button, 60000); // 60 second timeout
+    })
+    .catch(error => {
+        console.error('Error executing container action:', error);
+        setButtonTransitioning(button, false);
+        containerStates[containerName] = 'unknown';
+        updatePowerButtonIcon(button, 'unknown');
+        alert(`Failed to ${action} container: ${error.message}`);
+    });
+}
+
+// Poll container state until it changes
+function pollContainerState(containerName, expectedAction, button, timeout) {
+    const startTime = Date.now();
+    const pollInterval = 2000; // Poll every 2 seconds
+    const expectedState = expectedAction === 'start' ? 'running' : 'stopped';
+    
+    const poller = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        
+        // Check timeout
+        if (elapsed > timeout) {
+            clearInterval(poller);
+            setButtonTransitioning(button, false);
+            console.error(`Container state change timeout for ${containerName}`);
+            alert(`Timeout waiting for container to ${expectedAction}`);
+            fetchContainerStatus(containerName); // Try one more time
+            return;
+        }
+        
+        // Query current state
+        fetch(`/container-status/${containerName}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log(`Polling ${containerName} state: ${data.state}`);
+                
+                if (data.state === expectedState) {
+                    // State change confirmed
+                    clearInterval(poller);
+                    setButtonTransitioning(button, false);
+                    containerStates[containerName] = data.state;
+                    updatePowerButtonIcon(button, data.state);
+                    console.log(`Container ${containerName} successfully ${expectedAction}ed`);
+                } else if (data.state === 'unknown') {
+                    // Still in transition, keep polling
+                    updatePowerButtonIcon(button, 'transitioning');
+                }
+            })
+            .catch(error => {
+                console.error('Error polling container state:', error);
+            });
+    }, pollInterval);
+}
+
+// Fetch and update container status for a specific container
+function fetchContainerStatus(containerName) {
+    fetch(`/container-status/${containerName}`)
+        .then(response => response.json())
+        .then(data => {
+            containerStates[containerName] = data.state;
+            updatePowerButtonsForContainer(containerName);
+        })
+        .catch(error => {
+            console.error(`Error fetching status for ${containerName}:`, error);
+            containerStates[containerName] = 'unknown';
+        });
+}
+
+// Update all power buttons for a specific container
+function updatePowerButtonsForContainer(containerName) {
+    const buttons = document.querySelectorAll(`button[onclick*="handlePowerControl"][onclick*="${containerName}"]`);
+    buttons.forEach(button => {
+        const state = containerStates[containerName] || 'unknown';
+        updatePowerButtonIcon(button, state);
+    });
+}
+
+// Update power button icon based on state
+function updatePowerButtonIcon(button, state) {
+    let icon, title, disabled = false;
+    
+    switch (state) {
+        case 'running':
+            icon = '🟢'; // Green circle - running
+            title = 'Container is running (click to stop)';
+            break;
+        case 'stopped':
+            icon = '🔴'; // Red circle - stopped
+            title = 'Container is stopped (click to start)';
+            break;
+        case 'transitioning':
+            icon = '⏳'; // Hourglass - transitioning
+            title = 'Container state is changing...';
+            disabled = true;
+            break;
+        case 'unknown':
+        default:
+            icon = '❓'; // Question mark - unknown
+            title = 'Container state unknown';
+            break;
+    }
+    
+    button.textContent = icon;
+    button.title = title;
+    button.disabled = disabled;
+}
+
+// Set button to transitioning state
+function setButtonTransitioning(button, isTransitioning) {
+    button.disabled = isTransitioning;
+    if (isTransitioning) {
+        button.dataset.previousContent = button.textContent;
+        button.textContent = '⏳';
+    } else {
+        button.textContent = button.dataset.previousContent || '❓';
+    }
+}
+
+// Initialize container status polling when report loads
+function startContainerStatusPolling(containerName) {
+    if (containerStatusPoller) {
+        clearInterval(containerStatusPoller);
+    }
+    
+    // Fetch initial status
+    fetchContainerStatus(containerName);
+    
+    // Poll every 30 seconds
+    containerStatusPoller = setInterval(() => {
+        fetchContainerStatus(containerName);
+    }, 30000);
+}
+
+// Stop container status polling
+function stopContainerStatusPolling() {
+    if (containerStatusPoller) {
+        clearInterval(containerStatusPoller);
+        containerStatusPoller = null;
+    }
 }
 
 
@@ -212,6 +423,9 @@ function loadReport(url) {
                 
                 // Update the timestamp with the file's Last-Modified date
                 updateTimestamp(lastModified);
+                
+                // Start polling container status
+                startContainerStatusPolling(appName);
             } else {
                 console.error(xhr.statusText);
             }

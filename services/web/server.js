@@ -6,11 +6,40 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = '/mnt/cwm-data';
 const LOGS_DIR = '/mnt/cwm-logs';
+
+// Azure ACI Configuration
+const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
+const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID;
+const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
+
+// Whitelist of allowed container names (report containers)
+const ALLOWED_CONTAINERS = [
+  'appReopenedTicket',
+  'appTimeSinceLastTimeEntry',
+  'appPOCOpenTicket',
+  'appAvgTimeEntryGap',
+  'appAvgTimeEntryDuration',
+  'appTicketsWorkedToday',
+  'appKeywordsLast7Days',
+  'appTicketsWorkedLastDays_30'
+];
+
+// Helper function to get container group name
+function getContainerGroupName(containerName) {
+  const env = ENVIRONMENT === 'production' ? 'prod' : 'staging';
+  return `cwm-${env}-${containerName}`;
+}
+
+// Helper function to validate container name
+function isValidContainer(containerName) {
+  return ALLOWED_CONTAINERS.includes(containerName);
+}
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -208,6 +237,102 @@ app.get('/download-logs/:containerName', (req, res) => {
   } catch (error) {
     console.error(`Error downloading log file: ${error.message}`);
     res.status(500).send('Error downloading log file');
+  }
+});
+
+/**
+ * Get container group power state
+ * Frontend requests /container-status/containerName -> returns {state: 'running'|'stopped', lastModified: timestamp}
+ */
+app.get('/container-status/:containerName', (req, res) => {
+  const { containerName } = req.params;
+  
+  // Validate container name
+  if (!isValidContainer(containerName)) {
+    return res.status(400).json({ error: 'Invalid container name' });
+  }
+
+  // Check prerequisites
+  if (!AZURE_RESOURCE_GROUP || !AZURE_SUBSCRIPTION_ID) {
+    console.error('Azure configuration missing');
+    return res.status(500).json({ error: 'Azure configuration not available' });
+  }
+
+  try {
+    const groupName = getContainerGroupName(containerName);
+    
+    // Query container group state using Azure CLI
+    const command = `az container show --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName} --query "containers[0].instanceView.currentState.state" --output tsv`;
+    
+    const state = execSync(command, { encoding: 'utf-8' }).trim().toLowerCase();
+    
+    // State will be 'running', 'waiting', 'terminated', etc.
+    const isRunning = state === 'running';
+    
+    res.json({ 
+      state: isRunning ? 'running' : 'stopped',
+      containerGroup: groupName,
+      actualState: state,
+      timestamp: new Date().toISOString()
+    });
+    
+    console.log(`Container status query: ${groupName} -> ${state}`);
+    
+  } catch (error) {
+    console.error(`Error querying container status: ${error.message}`);
+    // Return stopped state if unable to query (safer default)
+    res.status(200).json({ 
+      state: 'unknown',
+      error: 'Unable to query container status',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+/**
+ * Control container group power state (start/stop)
+ * Frontend sends POST /container-action/containerName with {action: 'start'|'stop'}
+ */
+app.post('/container-action/:containerName', express.json(), (req, res) => {
+  const { containerName } = req.params;
+  const { action } = req.body;
+  
+  // Validate inputs
+  if (!isValidContainer(containerName)) {
+    return res.status(400).json({ error: 'Invalid container name' });
+  }
+  
+  if (!['start', 'stop'].includes(action)) {
+    return res.status(400).json({ error: 'Invalid action. Must be "start" or "stop"' });
+  }
+
+  // Check prerequisites
+  if (!AZURE_RESOURCE_GROUP || !AZURE_SUBSCRIPTION_ID) {
+    console.error('Azure configuration missing');
+    return res.status(500).json({ error: 'Azure configuration not available' });
+  }
+
+  try {
+    const groupName = getContainerGroupName(containerName);
+    
+    // Execute start or stop action
+    if (action === 'start') {
+      execSync(`az container start --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName}`, { encoding: 'utf-8' });
+      console.log(`Container started: ${groupName}`);
+      res.json({ success: true, action: 'start', containerGroup: groupName, timestamp: new Date().toISOString() });
+    } else {
+      execSync(`az container stop --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName}`, { encoding: 'utf-8' });
+      console.log(`Container stopped: ${groupName}`);
+      res.json({ success: true, action: 'stop', containerGroup: groupName, timestamp: new Date().toISOString() });
+    }
+    
+  } catch (error) {
+    console.error(`Error controlling container: ${error.message}`);
+    res.status(500).json({ 
+      error: 'Failed to control container',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 

@@ -68,6 +68,23 @@
     <!-- Viewport -->
     <div id="viewport"></div>
   </div>
+
+  <!-- Container Power Control Confirmation Modal -->
+  <div id="powerControlModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="powerControlModalTitle">Control Container</h2>
+        <span class="close" onclick="closeContainerConfirmation()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <p id="powerControlModalMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button cancel" onclick="closeContainerConfirmation()">Cancel</button>
+        <button class="modal-button confirm" id="powerControlConfirmBtn">Proceed</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
