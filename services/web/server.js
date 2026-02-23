@@ -19,6 +19,15 @@ const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
 const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID;
 const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
 
+// Log Azure configuration at startup for debugging
+console.log('=== Azure Configuration at Startup ===');
+console.log(`AZURE_RESOURCE_GROUP: ${AZURE_RESOURCE_GROUP || 'NOT SET'}`);
+console.log(`AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID || 'NOT SET'}`);
+console.log(`ENVIRONMENT: ${ENVIRONMENT}`);
+console.log(`AZURE_CREDENTIALS_B64: ${process.env.AZURE_CREDENTIALS_B64 ? 'SET (base64)' : 'NOT SET'}`);
+console.log(`AZURE_CREDENTIALS: ${process.env.AZURE_CREDENTIALS ? 'SET (raw)' : 'NOT SET'}`);
+console.log('========================================');
+
 // Parse and set Azure credentials from AZURE_CREDENTIALS secret (or base64-encoded version)
 // DefaultAzureCredential will use these environment variables for authentication
 let credentialsJson = process.env.AZURE_CREDENTIALS;
@@ -293,8 +302,16 @@ app.get('/container-status/:containerName', async (req, res) => {
 
   // Check prerequisites
   if (!AZURE_RESOURCE_GROUP || !AZURE_SUBSCRIPTION_ID) {
-    console.error('Azure configuration missing');
-    return res.status(500).json({ error: 'Azure configuration not available' });
+    console.error('Azure configuration missing for container status query:');
+    console.error(`  AZURE_RESOURCE_GROUP: ${AZURE_RESOURCE_GROUP || 'NOT SET'}`);
+    console.error(`  AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID || 'NOT SET'}`);
+    return res.status(500).json({ 
+      error: 'Azure configuration not available',
+      details: {
+        resourceGroup: AZURE_RESOURCE_GROUP ? 'SET' : 'MISSING',
+        subscriptionId: AZURE_SUBSCRIPTION_ID ? 'SET' : 'MISSING'
+      }
+    });
   }
 
   try {
@@ -355,8 +372,16 @@ app.post('/container-action/:containerName', express.json(), async (req, res) =>
 
   // Check prerequisites
   if (!AZURE_RESOURCE_GROUP || !AZURE_SUBSCRIPTION_ID) {
-    console.error('Azure configuration missing');
-    return res.status(500).json({ error: 'Azure configuration not available' });
+    console.error('Azure configuration missing for container action:');
+    console.error(`  AZURE_RESOURCE_GROUP: ${AZURE_RESOURCE_GROUP || 'NOT SET'}`);
+    console.error(`  AZURE_SUBSCRIPTION_ID: ${AZURE_SUBSCRIPTION_ID || 'NOT SET'}`);
+    return res.status(500).json({ 
+      error: 'Azure configuration not available',
+      details: {
+        resourceGroup: AZURE_RESOURCE_GROUP ? 'SET' : 'MISSING',
+        subscriptionId: AZURE_SUBSCRIPTION_ID ? 'SET' : 'MISSING'
+      }
+    });
   }
 
   try {
