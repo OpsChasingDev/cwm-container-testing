@@ -322,10 +322,11 @@ app.get('/container-status/:containerName', async (req, res) => {
     // Query container group state using Azure SDK
     const containerGroup = await containerClient.containerGroups.get(AZURE_RESOURCE_GROUP, groupName);
     
-    // Get the state from the container's instance view
-    const state = containerGroup.containers[0]?.instanceView?.currentState?.state || 'unknown';
+    // Get the state from the container's instance view (Azure SDK returns 'Running' or 'Stopped' with capital letters)
+    const rawState = containerGroup.containers[0]?.instanceView?.currentState?.state || 'unknown';
+    const state = rawState.toLowerCase();
     
-    console.log(`Container ${groupName} state: ${state}`);
+    console.log(`Container ${groupName} raw state: ${rawState}, normalized: ${state}`);
     
     // State will be 'running', 'waiting', 'terminated', etc.
     const isRunning = state === 'running';
@@ -333,7 +334,8 @@ app.get('/container-status/:containerName', async (req, res) => {
     res.json({ 
       state: isRunning ? 'running' : 'stopped',
       containerGroup: groupName,
-      actualState: state,
+      actualState: state,  // normalized lowercase
+      rawState: rawState,   // raw state from Azure SDK
       timestamp: new Date().toISOString()
     });
     
@@ -361,9 +363,14 @@ app.post('/container-action/:containerName', express.json(), async (req, res) =>
   const { containerName } = req.params;
   const { action } = req.body;
   
+  console.log(`POST /container-action - Received containerName: "${containerName}", action: "${action}"`);
+  console.log(`POST /container-action - ALLOWED_CONTAINERS: ${JSON.stringify(ALLOWED_CONTAINERS)}`);
+  console.log(`POST /container-action - isValidContainer result: ${isValidContainer(containerName)}`);
+  
   // Validate inputs
   if (!isValidContainer(containerName)) {
-    return res.status(400).json({ error: 'Invalid container name' });
+    console.error(`POST /container-action - Invalid container name: "${containerName}"`);
+    return res.status(400).json({ error: 'Invalid container name', receivedContainerName: containerName, allowedContainers: ALLOWED_CONTAINERS });
   }
   
   if (!['start', 'stop'].includes(action)) {
