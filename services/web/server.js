@@ -6,7 +6,8 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { ContainerInstanceManagementClient } = require('@azure/arm-containerinstance');
+const { DefaultAzureCredential } = require('@azure/identity');
 const app = express();
 
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,25 @@ const LOGS_DIR = '/mnt/cwm-logs';
 const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
 const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID;
 const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
+
+// Parse and set Azure credentials from AZURE_CREDENTIALS secret
+// DefaultAzureCredential will use these environment variables for authentication
+if (process.env.AZURE_CREDENTIALS) {
+  try {
+    const azureCredentials = JSON.parse(process.env.AZURE_CREDENTIALS);
+    process.env.AZURE_CLIENT_ID = azureCredentials.clientId;
+    process.env.AZURE_CLIENT_SECRET = azureCredentials.clientSecret;
+    process.env.AZURE_TENANT_ID = azureCredentials.tenantId;
+    console.log('Azure credentials loaded from AZURE_CREDENTIALS secret');
+  } catch (error) {
+    console.error('Failed to parse AZURE_CREDENTIALS:', error.message);
+  }
+}
+
+// Initialize Azure clients with DefaultAzureCredential
+// This automatically uses the service principal credentials set above
+const credential = new DefaultAzureCredential();
+const containerClient = new ContainerInstanceManagementClient(credential, AZURE_SUBSCRIPTION_ID);
 
 // Whitelist of allowed container names (report containers) with mapping to ACI container group names
 // Maps app names (used in UI) to their corresponding Azure Container Instance container numbers
@@ -250,7 +270,7 @@ app.get('/download-logs/:containerName', (req, res) => {
  * Get container group power state
  * Frontend requests /container-status/containerName -> returns {state: 'running'|'stopped', lastModified: timestamp}
  */
-app.get('/container-status/:containerName', (req, res) => {
+app.get('/container-status/:containerName', async (req, res) => {
   const { containerName } = req.params;
   
   // Validate container name
@@ -267,10 +287,15 @@ app.get('/container-status/:containerName', (req, res) => {
   try {
     const groupName = getContainerGroupName(containerName);
     
-    // Query container group state using Azure CLI
-    const command = `az container show --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName} --query "containers[0].instanceView.currentState.state" --output tsv`;
+    console.log(`Querying container status using Azure SDK for: ${groupName}`);
     
-    const state = execSync(command, { encoding: 'utf-8' }).trim().toLowerCase();
+    // Query container group state using Azure SDK
+    const containerGroup = await containerClient.containerGroups.get(AZURE_RESOURCE_GROUP, groupName);
+    
+    // Get the state from the container's instance view
+    const state = containerGroup.containers[0]?.instanceView?.currentState?.state || 'unknown';
+    
+    console.log(`Container ${groupName} state: ${state}`);
     
     // State will be 'running', 'waiting', 'terminated', etc.
     const isRunning = state === 'running';
@@ -286,11 +311,13 @@ app.get('/container-status/:containerName', (req, res) => {
     
   } catch (error) {
     console.error(`Error querying container status for ${containerName}: ${error.message}`);
+    console.error(`Stack: ${error.stack}`);
     // Return error state if unable to query
     res.status(500).json({ 
       state: 'unknown',
       error: 'Unable to query container status',
       details: error.message,
+      containerGroup: `cwm-${ENVIRONMENT === 'production' ? 'prod' : 'staging'}-${APP_TO_CONTAINER_MAP[containerName]}`,
       timestamp: new Date().toISOString()
     });
   }
@@ -300,7 +327,7 @@ app.get('/container-status/:containerName', (req, res) => {
  * Control container group power state (start/stop)
  * Frontend sends POST /container-action/containerName with {action: 'start'|'stop'}
  */
-app.post('/container-action/:containerName', express.json(), (req, res) => {
+app.post('/container-action/:containerName', express.json(), async (req, res) => {
   const { containerName } = req.params;
   const { action } = req.body;
   
@@ -322,19 +349,22 @@ app.post('/container-action/:containerName', express.json(), (req, res) => {
   try {
     const groupName = getContainerGroupName(containerName);
     
-    // Execute start or stop action
+    console.log(`Executing ${action} on container using Azure SDK: ${groupName}`);
+    
+    // Execute start or stop action using Azure SDK
     if (action === 'start') {
-      execSync(`az container start --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName}`, { encoding: 'utf-8' });
+      await containerClient.containerGroups.start(AZURE_RESOURCE_GROUP, groupName);
       console.log(`Container started: ${groupName}`);
       res.json({ success: true, action: 'start', containerGroup: groupName, timestamp: new Date().toISOString() });
     } else {
-      execSync(`az container stop --resource-group ${AZURE_RESOURCE_GROUP} --name ${groupName}`, { encoding: 'utf-8' });
+      await containerClient.containerGroups.stop(AZURE_RESOURCE_GROUP, groupName);
       console.log(`Container stopped: ${groupName}`);
       res.json({ success: true, action: 'stop', containerGroup: groupName, timestamp: new Date().toISOString() });
     }
     
   } catch (error) {
     console.error(`Error controlling container: ${error.message}`);
+    console.error(`Stack: ${error.stack}`);
     res.status(500).json({ 
       error: 'Failed to control container',
       details: error.message,

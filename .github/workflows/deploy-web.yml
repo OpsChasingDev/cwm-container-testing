@@ -93,6 +93,12 @@ jobs:
                     value: ${{ secrets.CWM_SERVER }}
                   - name: TICKETING_BOARDS
                     value: ${{ vars.TICKETING_BOARDS }}
+                  - name: AZURE_CREDENTIALS
+                    secureString: ${{ secrets.AZURE_CREDENTIALS }}
+                  - name: AZURE_RESOURCE_GROUP
+                    value: ${{ secrets.AZURE_RESOURCE_GROUP }}
+                  - name: AZURE_SUBSCRIPTION_ID
+                    value: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
