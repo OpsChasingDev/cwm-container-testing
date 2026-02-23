@@ -53,6 +53,9 @@ jobs:
           DATA_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
           LOGGING_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-logging' || 'cwm-staging-shared-logging' }}
           
+          # Base64 encode Azure credentials to preserve multi-line JSON as single line
+          AZURE_CREDENTIALS_B64=$(echo -n '${{ secrets.AZURE_CREDENTIALS }}' | base64 -w0)
+          
           cat > /tmp/aci-web-deployment.yaml << EOF
           apiVersion: '2021-09-01'
           location: ${{ secrets.AZURE_LOCATION }}
@@ -93,8 +96,8 @@ jobs:
                     value: ${{ secrets.CWM_SERVER }}
                   - name: TICKETING_BOARDS
                     value: ${{ vars.TICKETING_BOARDS }}
-                  - name: AZURE_CREDENTIALS
-                    value: "${{ secrets.AZURE_CREDENTIALS }}"
+                  - name: AZURE_CREDENTIALS_B64
+                    value: "$AZURE_CREDENTIALS_B64"
                   - name: AZURE_RESOURCE_GROUP
                     value: ${{ secrets.AZURE_RESOURCE_GROUP }}
                   - name: AZURE_SUBSCRIPTION_ID

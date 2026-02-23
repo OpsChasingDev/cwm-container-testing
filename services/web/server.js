@@ -19,17 +19,30 @@ const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
 const AZURE_SUBSCRIPTION_ID = process.env.AZURE_SUBSCRIPTION_ID;
 const ENVIRONMENT = process.env.ENVIRONMENT || 'production';
 
-// Parse and set Azure credentials from AZURE_CREDENTIALS secret
+// Parse and set Azure credentials from AZURE_CREDENTIALS secret (or base64-encoded version)
 // DefaultAzureCredential will use these environment variables for authentication
-if (process.env.AZURE_CREDENTIALS) {
+let credentialsJson = process.env.AZURE_CREDENTIALS;
+
+// If credentials are base64 encoded (from deployment), decode them
+if (process.env.AZURE_CREDENTIALS_B64) {
   try {
-    const azureCredentials = JSON.parse(process.env.AZURE_CREDENTIALS);
+    credentialsJson = Buffer.from(process.env.AZURE_CREDENTIALS_B64, 'base64').toString('utf-8');
+    console.log('Azure credentials decoded from AZURE_CREDENTIALS_B64');
+  } catch (error) {
+    console.error('Failed to decode AZURE_CREDENTIALS_B64:', error.message);
+  }
+}
+
+// Parse and set credentials
+if (credentialsJson) {
+  try {
+    const azureCredentials = JSON.parse(credentialsJson);
     process.env.AZURE_CLIENT_ID = azureCredentials.clientId;
     process.env.AZURE_CLIENT_SECRET = azureCredentials.clientSecret;
     process.env.AZURE_TENANT_ID = azureCredentials.tenantId;
-    console.log('Azure credentials loaded from AZURE_CREDENTIALS secret');
+    console.log('Azure credentials loaded from AZURE_CREDENTIALS');
   } catch (error) {
-    console.error('Failed to parse AZURE_CREDENTIALS:', error.message);
+    console.error('Failed to parse Azure credentials:', error.message);
   }
 }
 
