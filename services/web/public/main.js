@@ -7,7 +7,7 @@ var cwmServer = null; // Will be loaded from server config
 var environment = 'production'; // Will be loaded from server config
 var currentContainerName = null; // Track which container's report is currently displayed
 var containerStatusPoller = null; // Track the status polling interval
-var containerStates = {}; // Track state of containers {containerName: 'running'|'stopped'|'unknown'}
+var containerStates = {}; // Track state of containers {containerName: {state: 'running'|'stopped'|'unknown', actualState: 'running'|'stopped'|'waiting'|'unknown'}}
 var containerLastActionTime = {}; // Track when actions were last performed (for rate limiting)
 
 // Create a tabbed viewport structure
@@ -105,7 +105,8 @@ function fetchAndDisplayLogs(containerName) {
 function handlePowerControl(event, containerName) {
     event.stopPropagation(); // Prevent triggering loadPage
     
-    const currentState = containerStates[containerName] || 'unknown';
+    const statusObj = containerStates[containerName] || { state: 'unknown', actualState: 'unknown' };
+    const currentState = statusObj.state || 'unknown';
     const actionType = currentState === 'running' ? 'stop' : 'start';
     const actionText = actionType === 'stop' ? 'Stop' : 'Start';
     
@@ -154,7 +155,7 @@ function executeContainerAction(containerName, action) {
     
     // Set button to transitioning state
     setButtonTransitioning(button, true);
-    containerStates[containerName] = 'transitioning';
+    containerStates[containerName] = { state: 'transitioning', actualState: 'waiting' };
     updatePowerButtonIcon(button, 'transitioning');
     
     fetch(`/container-action/${containerName}`, {
@@ -180,7 +181,7 @@ function executeContainerAction(containerName, action) {
     .catch(error => {
         console.error('Error executing container action:', error);
         setButtonTransitioning(button, false);
-        containerStates[containerName] = 'unknown';
+        containerStates[containerName] = { state: 'unknown', actualState: 'unknown' };
         updatePowerButtonIcon(button, 'unknown');
         alert(`Failed to ${action} container: ${error.message}`);
     });
@@ -209,16 +210,22 @@ function pollContainerState(containerName, expectedAction, button, timeout) {
         fetch(`/container-status/${containerName}`)
             .then(response => response.json())
             .then(data => {
-                console.log(`Polling ${containerName} state: ${data.state}`);
+                console.log(`Polling ${containerName} state: ${data.state}, actualState: ${data.actualState}`);
                 
-                if (data.state === expectedState) {
+                // Check if in transition (waiting state or unknown)
+                const isTransitioning = data.actualState === 'waiting' || data.actualState === 'unknown';
+                
+                if (data.state === expectedState && !isTransitioning) {
                     // State change confirmed
                     clearInterval(poller);
                     setButtonTransitioning(button, false);
-                    containerStates[containerName] = data.state;
+                    containerStates[containerName] = {
+                        state: data.state,
+                        actualState: data.actualState || data.state
+                    };
                     updatePowerButtonIcon(button, data.state);
                     console.log(`Container ${containerName} successfully ${expectedAction}ed`);
-                } else if (data.state === 'unknown') {
+                } else if (isTransitioning) {
                     // Still in transition, keep polling
                     updatePowerButtonIcon(button, 'transitioning');
                 }
@@ -234,12 +241,19 @@ function fetchContainerStatus(containerName) {
     fetch(`/container-status/${containerName}`)
         .then(response => response.json())
         .then(data => {
-            containerStates[containerName] = data.state;
+            // Store full status object with both state and actualState
+            containerStates[containerName] = {
+                state: data.state,
+                actualState: data.actualState || data.state
+            };
             updatePowerButtonsForContainer(containerName);
         })
         .catch(error => {
             console.error(`Error fetching status for ${containerName}:`, error);
-            containerStates[containerName] = 'unknown';
+            containerStates[containerName] = {
+                state: 'unknown',
+                actualState: 'unknown'
+            };
         });
 }
 
@@ -247,8 +261,15 @@ function fetchContainerStatus(containerName) {
 function updatePowerButtonsForContainer(containerName) {
     const buttons = document.querySelectorAll(`button[onclick*="handlePowerControl"][onclick*="${containerName}"]`);
     buttons.forEach(button => {
-        const state = containerStates[containerName] || 'unknown';
-        updatePowerButtonIcon(button, state);
+        const statusObj = containerStates[containerName] || { state: 'unknown', actualState: 'unknown' };
+        
+        // Determine display state based on actualState
+        let displayState = statusObj.state;
+        if (statusObj.actualState === 'waiting') {
+            displayState = 'transitioning';
+        }
+        
+        updatePowerButtonIcon(button, displayState);
     });
 }
 
