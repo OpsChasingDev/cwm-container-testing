@@ -396,17 +396,16 @@ app.post('/container-action/:containerName', express.json(), async (req, res) =>
     
     console.log(`Executing ${action} on container using Azure SDK: ${groupName}`);
     
-    // Execute start or stop action using Azure SDK Long Running Operations
+    // Execute start or stop action using Azure SDK
     if (action === 'start') {
-      // Use beginStart to get a poller, then poll until done
+      // Start uses Long Running Operations - need to poll
       const poller = await containerClient.containerGroups.beginStart(AZURE_RESOURCE_GROUP, groupName);
       await poller.pollUntilDone();
       console.log(`Container started: ${groupName}`);
       res.json({ success: true, action: 'start', containerGroup: groupName, timestamp: new Date().toISOString() });
     } else {
-      // Use beginStop to get a poller, then poll until done
-      const poller = await containerClient.containerGroups.beginStop(AZURE_RESOURCE_GROUP, groupName);
-      await poller.pollUntilDone();
+      // Stop is a direct operation (no Long Running Operation)
+      await containerClient.containerGroups.stop(AZURE_RESOURCE_GROUP, groupName);
       console.log(`Container stopped: ${groupName}`);
       res.json({ success: true, action: 'stop', containerGroup: groupName, timestamp: new Date().toISOString() });
     }
