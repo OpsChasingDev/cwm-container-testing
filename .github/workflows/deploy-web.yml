@@ -53,6 +53,12 @@ jobs:
           DATA_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-data' || 'cwm-staging-shared-data' }}
           LOGGING_SHARE_NAME=${{ github.ref == 'refs/heads/main' && 'cwm-prod-shared-logging' || 'cwm-staging-shared-logging' }}
           
+          # Store secrets in variables to use in YAML
+          AZURE_RESOURCE_GROUP="${{ secrets.AZURE_RESOURCE_GROUP }}"
+          AZURE_SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          CWM_SERVER="${{ secrets.CWM_SERVER }}"
+          TICKETING_BOARDS="${{ vars.TICKETING_BOARDS }}"
+          
           # Base64 encode Azure credentials to preserve multi-line JSON as single line
           AZURE_CREDENTIALS_B64=$(echo -n '${{ secrets.AZURE_CREDENTIALS }}' | base64 -w0)
           
@@ -93,15 +99,15 @@ jobs:
                   - name: PORT
                     value: "80"
                   - name: CWM_SERVER
-                    value: ${{ secrets.CWM_SERVER }}
+                    value: "$CWM_SERVER"
                   - name: TICKETING_BOARDS
-                    value: ${{ vars.TICKETING_BOARDS }}
+                    value: "$TICKETING_BOARDS"
                   - name: AZURE_CREDENTIALS_B64
                     value: "$AZURE_CREDENTIALS_B64"
                   - name: AZURE_RESOURCE_GROUP
-                    value: ${{ secrets.AZURE_RESOURCE_GROUP }}
+                    value: "$AZURE_RESOURCE_GROUP"
                   - name: AZURE_SUBSCRIPTION_ID
-                    value: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+                    value: "$AZURE_SUBSCRIPTION_ID"
                 volumeMounts:
                   - name: cwm-shared-data
                     mountPath: /mnt/cwm-data
