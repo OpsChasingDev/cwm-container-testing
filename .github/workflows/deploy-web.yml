@@ -94,7 +94,7 @@ jobs:
                   - name: TICKETING_BOARDS
                     value: ${{ vars.TICKETING_BOARDS }}
                   - name: AZURE_CREDENTIALS
-                    secureString: ${{ secrets.AZURE_CREDENTIALS }}
+                    secureValue: ${{ secrets.AZURE_CREDENTIALS }}
                   - name: AZURE_RESOURCE_GROUP
                     value: ${{ secrets.AZURE_RESOURCE_GROUP }}
                   - name: AZURE_SUBSCRIPTION_ID
