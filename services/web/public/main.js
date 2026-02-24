@@ -308,8 +308,6 @@ function updatePowerButtonIcon(button, state) {
     button.style.backgroundColor = bgColor;
     button.style.color = '#fff'; // White text for contrast
 }
-    button.title = title;
-    button.disabled = disabled;
 
 // Set button to transitioning state
 function setButtonTransitioning(button, isTransitioning) {
