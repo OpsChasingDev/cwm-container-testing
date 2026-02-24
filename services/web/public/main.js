@@ -385,6 +385,30 @@ fetch('/config/ticketing-boards')
     }
   });
 
+// Load initial container statuses for all power control buttons
+function loadAllContainerStatuses() {
+  fetch('/all-container-status')
+    .then(response => response.json())
+    .then(data => {
+      console.log('Loaded container statuses:', data);
+      // Store all container statuses
+      for (const containerName in data) {
+        containerStates[containerName] = {
+          state: data[containerName].state,
+          actualState: data[containerName].actualState || data[containerName].state
+        };
+        // Update power buttons for this container
+        updatePowerButtonsForContainer(containerName);
+      }
+    })
+    .catch(error => {
+      console.error('Error loading all container statuses:', error);
+    });
+}
+
+// Call on page load to initialize power button states
+loadAllContainerStatuses();
+
 function loadPage(event, url) {
     event.preventDefault(); // Prevent the link from navigating to the URL
     // clear interval defined in var "interval" to prevent multiple loops running

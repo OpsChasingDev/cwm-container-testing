@@ -70,6 +70,7 @@ const APP_TO_CONTAINER_MAP = {
   'appAvgTimeEntryDuration': 'app07',
   'appTicketsWorkedToday': 'app08',
   'appKeywordsLast7Days': 'app09',
+  'appTicketsWorkedLastDays_30': 'app1'
 };
 
 const ALLOWED_CONTAINERS = Object.keys(APP_TO_CONTAINER_MAP);
@@ -289,9 +290,56 @@ app.get('/download-logs/:containerName', (req, res) => {
 });
 
 /**
- * Get container group power state
- * Frontend requests /container-status/containerName -> returns {state: 'running'|'stopped', lastModified: timestamp}
+ * Get all container statuses
+ * Frontend requests /all-container-status -> returns {[containerName]: {state, actualState, ...}}
  */
+app.get('/all-container-status', async (req, res) => {
+  if (!AZURE_RESOURCE_GROUP || !AZURE_SUBSCRIPTION_ID) {
+    console.error('Azure configuration missing for all container status query');
+    return res.status(500).json({ error: 'Azure configuration not available' });
+  }
+
+  const statuses = {};
+  const containerPromises = [];
+
+  // Query status for each container in parallel
+  for (const containerName of ALLOWED_CONTAINERS) {
+    containerPromises.push(
+      (async () => {
+        try {
+          const groupName = getContainerGroupName(containerName);
+          const containerGroup = await containerClient.containerGroups.get(AZURE_RESOURCE_GROUP, groupName);
+          const rawState = containerGroup.containers[0]?.instanceView?.currentState?.state || 'unknown';
+          const state = rawState.toLowerCase();
+          const isRunning = state === 'running';
+          
+          statuses[containerName] = {
+            state: isRunning ? 'running' : 'stopped',
+            containerGroup: groupName,
+            actualState: state,
+            rawState: rawState,
+            timestamp: new Date().toISOString()
+          };
+          console.log(`Container ${groupName} status: ${state}`);
+        } catch (error) {
+          console.error(`Error querying status for ${containerName}: ${error.message}`);
+          statuses[containerName] = {
+            state: 'unknown',
+            actualState: 'unknown',
+            error: error.message,
+            timestamp: new Date().toISOString()
+          };
+        }
+      })()
+    );
+  }
+
+  // Wait for all queries to complete
+  await Promise.all(containerPromises);
+  res.json(statuses);
+});
+
+
 app.get('/container-status/:containerName', async (req, res) => {
   const { containerName } = req.params;
   
