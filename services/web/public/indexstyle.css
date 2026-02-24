@@ -230,12 +230,12 @@ select {
   padding: 0;
   background-color: #f1f1f1;
   border: 1px solid #999;
-  border-radius: 50%;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   transition: background-color 0.2s, transform 0.1s;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   min-width: 0;
   flex-shrink: 0;
   display: flex;

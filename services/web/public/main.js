@@ -275,33 +275,41 @@ function updatePowerButtonsForContainer(containerName) {
 
 // Update power button icon based on state
 function updatePowerButtonIcon(button, state) {
-    let icon, title, disabled = false;
+    let icon, title, bgColor = '#f1f1f1', disabled = false;
     
     switch (state) {
         case 'running':
-            icon = '🟢'; // Green circle - running
+            icon = '⏻'; // Power symbol - running
             title = 'Container is running (click to stop)';
+            bgColor = '#4CAF50'; // Green
             break;
         case 'stopped':
-            icon = '🔴'; // Red circle - stopped
+            icon = '⏻'; // Power symbol - stopped
             title = 'Container is stopped (click to start)';
+            bgColor = '#f44336'; // Red
             break;
         case 'transitioning':
-            icon = '⏳'; // Hourglass - transitioning
+            icon = '⟳'; // Refresh/loading arrow - transitioning
             title = 'Container state is changing...';
+            bgColor = '#2196F3'; // Blue
             disabled = true;
             break;
         case 'unknown':
         default:
-            icon = '❓'; // Question mark - unknown
+            icon = '?'; // Question mark - unknown
             title = 'Container state unknown';
+            bgColor = '#999'; // Gray
             break;
     }
     
     button.textContent = icon;
     button.title = title;
     button.disabled = disabled;
+    button.style.backgroundColor = bgColor;
+    button.style.color = '#fff'; // White text for contrast
 }
+    button.title = title;
+    button.disabled = disabled;
 
 // Set button to transitioning state
 function setButtonTransitioning(button, isTransitioning) {
