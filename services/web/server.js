@@ -179,8 +179,8 @@ app.get('/config/ticketing-boards', (req, res) => {
   let boards = [];
   
   if (ticketingBoardsStr) {
-    // Parse comma-separated values and trim whitespace
-    boards = ticketingBoardsStr.split(',').map(board => board.trim()).filter(board => board.length > 0);
+    // Parse comma-separated values and trim whitespace and remove leading and trailing apostrophes
+    boards = ticketingBoardsStr.split(',').map(board => board.trim().replace(/^'+|'+$/g, '')).filter(board => board.length > 0);
   }
   
   res.json({ boards });
