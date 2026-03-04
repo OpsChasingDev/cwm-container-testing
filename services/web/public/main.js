@@ -448,6 +448,9 @@ function loadReport(url) {
                 var csvName = appName + '.csv';
                 selectedReportCSV = csvName;
 
+                // Reset download button to default "Download CSV" when new report loads
+                updateDownloadButton('data-tab');
+
                 // Call loadTable function to update TicketID hyperlinks
                 ticketHyperlink();
 
