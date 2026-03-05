@@ -452,4 +452,3 @@ The `shared/modules/CWMShared.psm1` module provides common functions used across
 | Function | Description |
 |----------|-------------|
 | `Construct-CWMCondition` | Builds CWM API query condition strings for filtering API requests. |
-| `Construct-CWMCondition` | Builds CWM API query condition strings for filtering API requests. |
