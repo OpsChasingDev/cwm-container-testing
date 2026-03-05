@@ -70,7 +70,6 @@ const APP_TO_CONTAINER_MAP = {
   'appAvgTimeEntryDuration': 'app07',
   'appTicketsWorkedToday': 'app08',
   'appKeywordsLast7Days': 'app09',
-  'appTicketsWorkedLastDays_30': 'app1'
 };
 
 const ALLOWED_CONTAINERS = Object.keys(APP_TO_CONTAINER_MAP);
