@@ -15,7 +15,7 @@ tr, td {
 th {
     text-align: center;
     padding: 4px;
-    background-color: #50b7e0;
+    background-color: #03a1fe;
     color: black;
     border: 1px solid black;
 }
@@ -25,5 +25,5 @@ tr {
 }
 
 tbody tr:hover {
-    background-color: rgba(80, 183, 224, 0.15);
+    background-color: rgba(3, 161, 254, 0.15);
 }
