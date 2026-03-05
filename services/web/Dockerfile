@@ -1,11 +1,9 @@
 # Use Node.js 18 Alpine as the base image
 FROM node:18-alpine
 
-# Create the /mnt/cwm-data directory for mounting Azure Files
+# Create mount directories for Azure Files
 RUN mkdir -p /mnt/cwm-data
-
-# Create mount directory for reports
-RUN mkdir -p /mnt/cwm-data
+RUN mkdir -p /mnt/cwm-branding
 
 # Copy package files
 COPY services/web/package.json .

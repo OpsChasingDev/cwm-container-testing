@@ -78,6 +78,11 @@ jobs:
                 shareName: $LOGGING_SHARE_NAME
                 storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
                 storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+            - name: cwm-shared-branding
+              azureFile:
+                shareName: branding
+                storageAccountName: ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}
+                storageAccountKey: ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
             containers:
             - name: web
               properties:
@@ -113,6 +118,8 @@ jobs:
                     mountPath: /mnt/cwm-data
                   - name: cwm-shared-logging
                     mountPath: /mnt/cwm-logs
+                  - name: cwm-shared-branding
+                    mountPath: /mnt/cwm-branding
             osType: Linux
             imageRegistryCredentials:
             - server: ${{ secrets.ACR_LOGIN_SERVER }}

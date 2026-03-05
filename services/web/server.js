@@ -13,6 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = '/mnt/cwm-data';
 const LOGS_DIR = '/mnt/cwm-logs';
+const BRANDING_DIR = '/mnt/cwm-branding';
 
 // Azure ACI Configuration
 const AZURE_RESOURCE_GROUP = process.env.AZURE_RESOURCE_GROUP;
@@ -148,6 +149,72 @@ app.get('/report/:filename', (req, res) => {
   } catch (error) {
     console.error(`Error serving report: ${error.message}`);
     res.status(500).send('Error loading report');
+  }
+});
+
+/**
+ * Serve branding assets from mounted branding directory
+ * Frontend requests /branding/filename -> server serves from /mnt/cwm-branding
+ * Supports: icon.png, banner.png, and other image assets
+ */
+app.get('/branding/:filename', (req, res) => {
+  const { filename } = req.params;
+  
+  // Security: prevent directory traversal
+  if (filename.includes('..') || filename.includes('/')) {
+    return res.status(400).send('Invalid filename');
+  }
+
+  try {
+    // Check if branding directory exists
+    if (!fs.existsSync(BRANDING_DIR)) {
+      console.log(`Branding directory not found: ${BRANDING_DIR}`);
+      return res.status(404).send('Branding asset not found');
+    }
+
+    const filePath = path.join(BRANDING_DIR, filename);
+    
+    // Verify file exists and is within branding directory (prevent traversal)
+    const resolvedPath = path.resolve(filePath);
+    const resolvedBrandingDir = path.resolve(BRANDING_DIR);
+    
+    if (!resolvedPath.startsWith(resolvedBrandingDir)) {
+      return res.status(400).send('Invalid file path');
+    }
+
+    if (fs.existsSync(filePath)) {
+      const stat = fs.statSync(filePath);
+      
+      // Security: only serve files, not directories
+      if (stat.isFile()) {
+        console.log(`Serving branding asset: ${filename}`);
+        
+        // Set appropriate content type based on file extension
+        if (filename.endsWith('.png')) {
+          res.setHeader('Content-Type', 'image/png');
+        } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+          res.setHeader('Content-Type', 'image/jpeg');
+        } else if (filename.endsWith('.svg')) {
+          res.setHeader('Content-Type', 'image/svg+xml');
+        } else if (filename.endsWith('.gif')) {
+          res.setHeader('Content-Type', 'image/gif');
+        } else if (filename.endsWith('.webp')) {
+          res.setHeader('Content-Type', 'image/webp');
+        } else {
+          res.setHeader('Content-Type', 'application/octet-stream');
+        }
+        
+        return res.sendFile(filePath);
+      }
+    }
+    
+    // File not found
+    console.log(`Branding asset not found: ${filename}`);
+    res.status(404).send('Branding asset not found');
+    
+  } catch (error) {
+    console.error(`Error serving branding asset: ${error.message}`);
+    res.status(500).send('Error loading branding asset');
   }
 });
 
@@ -483,5 +550,6 @@ app.listen(PORT, () => {
   console.log(`Serving static files from: ${path.join(__dirname, 'public')}`);
   console.log(`Reading reports from: ${DATA_DIR}`);
   console.log(`Reading logs from: ${LOGS_DIR}`);
+  console.log(`Reading branding assets from: ${BRANDING_DIR}`);
   console.log(`Health check available at: http://localhost:${PORT}/health`);
 });
