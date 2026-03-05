@@ -13,14 +13,14 @@ body {
   background-image: url('/branding/banner.png');
   background-size: cover;
   background-position: center;
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   border: 1px solid black;
   padding: 20px;
-  text-align: center;
+  text-align: left;
 }
 
 #page-title {
-  color: white;
+  color: #03a1fe;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
   margin: 0;
   padding: 0;
@@ -81,7 +81,7 @@ li {
 }
 
 #sidebar a.clicked {
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   color: #fff;
 }
 
@@ -91,13 +91,13 @@ li {
 
 #sidebar a:last-child.clicked {
   color: #333;
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   font-weight: bold;
 }
 
 
 #downloadButton {
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   border: 1px solid black;
   padding: 5px;
   margin-bottom: 5px;
@@ -186,7 +186,7 @@ select {
 .tab-buttons {
   display: flex;
   gap: 0;
-  border-bottom: 2px solid #50b7e0;
+  border-bottom: 2px solid #03a1fe;
   margin-bottom: 0;
 }
 
@@ -209,9 +209,9 @@ select {
 }
 
 .tab-button.active {
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   color: #fff;
-  border-color: #50b7e0;
+  border-color: #03a1fe;
   font-weight: bold;
 }
 
@@ -264,7 +264,7 @@ select {
 }
 
 .power-control-btn:focus {
-  outline: 2px solid #50b7e0;
+  outline: 2px solid #03a1fe;
 }
 
 .power-control-btn:disabled {
@@ -317,7 +317,7 @@ select {
 }
 
 .modal-header {
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   color: white;
   padding: 20px;
   border-radius: 8px 8px 0 0;
@@ -384,10 +384,10 @@ select {
 }
 
 .modal-button.confirm {
-  background-color: #50b7e0;
+  background-color: #03a1fe;
   color: white;
 }
 
 .modal-button.confirm:hover {
-  background-color: #3a9bc5;
+  background-color: #0288d1;
 }
