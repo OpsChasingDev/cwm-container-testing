@@ -68,6 +68,7 @@ while ($true) {
 
     # Retrieve all tickets from specified boards
     try {
+        $boardsEnv = $boardsEnv | Where-Object { $_ -ne "Cloud" } # exclude "Cloud" board if present in environment variable, as it is not relevant to this report and often contains tickets with a summary syntax that breaks the keyword parsing logic, which can lead to errors and inaccurate results such as "["
         $Tickets = Get-CWMFullTicket -Board $boardsEnv -ClosedStatus All -LastDays 7 # uses dateEntered as a condition to the REST API to only retrieve tickets created in the last 7 days, which improves performance by reducing the number of tickets returned and processed
         New-CWMLog -Type "Info" -Message "Retrieved $($Tickets.Count) tickets from specified boards created on or after $((Get-Date).AddDays(-7).ToUniversalTime().AddHours(-5)) EST"
     }
@@ -78,7 +79,7 @@ while ($true) {
     try {
         New-CWMLog -Type "Info" -Message "Generating report..."
         # Create and group keywords from ticket summaries, excluding common words
-        $exceptions = "|","new","request","YOUR","TICKET","RE:","-",":","&","issue","add","a", "the", "and", "or", "but", "is", "are", "was", "were", "in", "on", "at", "to", "for", "with", "cannot", "be", "by", "of", "from", "as", "that", "this", "it", "its", "if", "then", "else", "when", "while", "do", "does", "did", "not", "no", "yes", "can", "will", "just", "up", "down", "out", "over", "under", "again", "further", "here", "there", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "only", "own", "same", "so", "than", "too", "very", "should", "now"
+        $exceptions = "Fw:","|","new","request","YOUR","TICKET","RE:","-",":","&","issue","add","a", "the", "and", "or", "but", "is", "are", "was", "were", "in", "on", "at", "to", "for", "with", "cannot", "be", "by", "of", "from", "as", "that", "this", "it", "its", "if", "then", "else", "when", "while", "do", "does", "did", "not", "no", "yes", "can", "will", "just", "up", "down", "out", "over", "under", "again", "further", "here", "there", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "only", "own", "same", "so", "than", "too", "very", "should", "now"
         $keywords = $Tickets | ForEach-Object { ($_.summary).Split(" ").Trim() | Where-Object { $_ -notin $exceptions -and $_ } } # separates summary strings by spaces, trims whitespace, and excludes common words and empty results
         $TopKeywords = $keywords | Group-Object | Sort-Object -Property Count -Descending -Top 20 | Select-Object -ExpandProperty Name
 
