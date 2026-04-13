@@ -29,7 +29,7 @@ Before starting, confirm you have the following:
 - A GitHub organization account with permissions to create repositories and configure secrets
 - An Azure tenant with Global Administrator or Privileged Role Administrator access
 - An Azure subscription (or the ability to create one) in the organization's tenant
-- Azure AD (Entra ID) P1 or P2 licensing (required for Azure App Proxy)
+- Microsoft Entra ID P1 or P2 licensing (required for Azure App Proxy)
 - ConnectWise Manage API credentials (Company ID, Server URL, Public Key, Private Key, Client ID)
 - Azure CLI installed locally (`az` command) and authenticated
 - A domain name or subdomain you control for DNS (e.g., `cwm-reporting.yourcompany.com`)
@@ -249,6 +249,8 @@ az network application-gateway create \
   --servers "10.0.2.4"
 ```
 
+> The `--servers` value (`10.0.2.4`) is a placeholder for the ACI container's private IP on the VNet. After deploying the web container for the first time, retrieve the actual private IP and update the Application Gateway backend pool accordingly (see [Part 9.2](#92-remove-the-dns-update-step)).
+
 The static public IP (`cwm-web-public-ip`) is what your DNS and App Proxy will point to, and it remains stable across deployments.
 
 > When using VNet-integrated ACI, the `deploy-web.yml` workflow must be updated. See [Part 9](#part-9--workflow-modifications-for-static-ip-1015-min) for details.
@@ -357,7 +359,7 @@ Azure App Proxy ensures employees must authenticate with their company Entra (Az
 
 ### 7.1 Prerequisites
 
-- **Azure AD P1 or P2 license** — required for Azure AD Application Proxy.
+- **Microsoft Entra ID P1 or P2 license** — required for Application Proxy.
 - At least one **Application Proxy connector** installed on a Windows Server that has line-of-sight to the internet.
 
 ### 7.2 Install the App Proxy Connector (10–15 min)
@@ -388,10 +390,10 @@ Azure App Proxy ensures employees must authenticate with their company Entra (Az
 1. In the App Proxy application settings, go to **Application proxy**.
 2. Set **External URL** to `https://cwm-reporting.yourcompany.com`.
 3. Upload an SSL/TLS certificate (PFX) for `cwm-reporting.yourcompany.com`.
-4. Add a CNAME record in your DNS:
-   ```
-   cwm-reporting.yourcompany.com → cwm-reporting-yourcompany.msappproxy.net
-   ```
+4. Add a CNAME record in your DNS zone:
+   - **Name:** `cwm-reporting.yourcompany.com`
+   - **Type:** `CNAME`
+   - **Value:** `cwm-reporting-yourcompany.msappproxy.net`
 
 ### 7.5 Configure User Assignment
 
@@ -498,9 +500,29 @@ subnetIds:
   - id: /subscriptions/<subscription-id>/resourceGroups/rg-cwm-reporting/providers/Microsoft.Network/virtualNetworks/cwm-vnet/subnets/aci-subnet
 ```
 
+> Replace `<subscription-id>` with your Azure subscription ID from [Part 1.1](#11-create-the-azure-subscription).
+
 ### 9.2 Remove the DNS Update Step
 
-Because DNS now points permanently to the static IP on the Application Gateway, remove the **Update Azure DNS Records** step from `deploy-web.yml`. The Application Gateway backend pool should be updated to point to the new ACI private IP after each deployment instead.
+Because DNS now points permanently to the static IP on the Application Gateway, remove the **Update Azure DNS Records** step from `deploy-web.yml`. Instead, after each deployment, update the Application Gateway backend pool to point to the new ACI private IP:
+
+```bash
+# Get the ACI container's private IP
+ACI_PRIVATE_IP=$(az container show \
+  --resource-group "rg-cwm-reporting" \
+  --name "$CONTAINER_GROUP_NAME" \
+  --query ipAddress.ip \
+  --output tsv)
+
+# Update the Application Gateway backend pool
+az network application-gateway address-pool update \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "appGatewayBackendPool" \
+  --servers "$ACI_PRIVATE_IP"
+```
+
+Add these commands to `deploy-web.yml` as a replacement for the removed DNS update step.
 
 ### 9.3 Update the DNS Zone Name
 
