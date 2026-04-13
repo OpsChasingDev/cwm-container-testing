@@ -1,6 +1,6 @@
 # CWM Custom Reporting — Deployment Guide
 
-A step-by-step guide for deploying the CWM Custom Reporting platform into a new GitHub repository, a new Azure subscription and resource group, and fronting it with Azure App Proxy and Entra authentication using a static public IP address.
+A step-by-step guide for deploying the CWM Custom Reporting platform into a new GitHub repository, a new Azure subscription and resource group, and fronting it with an Azure Application Gateway (with WAF) using a static public IP address.
 
 ---
 
@@ -10,10 +10,10 @@ A step-by-step guide for deploying the CWM Custom Reporting platform into a new 
 - [Part 1 — Azure Subscription and Resource Group (15–20 min)](#part-1--azure-subscription-and-resource-group-1520-min)
 - [Part 2 — Azure Container Registry (5–10 min)](#part-2--azure-container-registry-510-min)
 - [Part 3 — Storage Account and File Shares (10–15 min)](#part-3--storage-account-and-file-shares-1015-min)
-- [Part 4 — Static Public IP Address (5–10 min)](#part-4--static-public-ip-address-510-min)
-- [Part 5 — Azure DNS Zone (10–15 min)](#part-5--azure-dns-zone-1015-min)
+- [Part 4 — Static Public IP Address and Application Gateway (15–25 min)](#part-4--static-public-ip-address-and-application-gateway-1525-min)
+- [Part 5 — DNS Configuration (5–10 min)](#part-5--dns-configuration-510-min)
 - [Part 6 — Service Principal (10–15 min)](#part-6--service-principal-1015-min)
-- [Part 7 — Azure App Proxy and Entra Authentication (30–45 min)](#part-7--azure-app-proxy-and-entra-authentication-3045-min)
+- [Part 7 — Application Gateway WAF and Access Protection (15–25 min)](#part-7--application-gateway-waf-and-access-protection-1525-min)
 - [Part 8 — GitHub Repository Setup (15–20 min)](#part-8--github-repository-setup-1520-min)
 - [Part 9 — Workflow Modifications for Static IP (10–15 min)](#part-9--workflow-modifications-for-static-ip-1015-min)
 - [Part 10 — Initial Deployment and Validation (15–20 min)](#part-10--initial-deployment-and-validation-1520-min)
@@ -29,10 +29,9 @@ Before starting, confirm you have the following:
 - A GitHub organization account with permissions to create repositories and configure secrets
 - An Azure tenant with Global Administrator or Privileged Role Administrator access
 - An Azure subscription (or the ability to create one) in the organization's tenant
-- Microsoft Entra ID P1 or P2 licensing (required for Azure App Proxy)
 - ConnectWise Manage API credentials (Company ID, Server URL, Public Key, Private Key, Client ID)
 - Azure CLI installed locally (`az` command) and authenticated
-- A domain name or subdomain you control for DNS (e.g., `cwm-reporting.yourcompany.com`)
+- An existing DNS domain you control with access to manage records in its authoritative name server (e.g., you will add an A record such as `reports.mycompany.com` to the `mycompany.com` DNS zone)
 
 ---
 
@@ -183,9 +182,9 @@ az storage file upload --share-name "branding" \
 
 ---
 
-## Part 4 — Static Public IP Address (5–10 min)
+## Part 4 — Static Public IP Address and Application Gateway (15–25 min)
 
-Since ACI container groups are deleted and recreated on each deployment, the public IP normally changes. To maintain a static IP, deploy an intermediary resource such as an Azure Application Gateway.
+Since ACI container groups are deleted and recreated on each deployment, the public IP normally changes. To maintain a static IP and protect access to the web interface, deploy an Azure Application Gateway (with WAF) in front of the ACI container.
 
 ### 4.1 Create a Static Public IP
 
@@ -208,13 +207,11 @@ az network public-ip show \
   --output tsv
 ```
 
-Record this IP address. It will be used for DNS records and App Proxy configuration.
+Record this IP address. It will be used for the DNS A record you create in your organization's existing DNS zone, and it remains stable across container redeployments.
 
-### 4.3 Network Integration for ACI with Static IP
+### 4.3 Create a VNet and Subnets
 
-To assign the static IP to ACI, deploy the web container into a virtual network and front it with an Application Gateway.
-
-#### Create a VNet and Subnets
+The Application Gateway and ACI container each require their own subnet within a shared virtual network.
 
 ```bash
 az network vnet create \
@@ -232,13 +229,46 @@ az network vnet subnet create \
   --delegations "Microsoft.ContainerInstance/containerGroups"
 ```
 
-#### Create the Application Gateway
+### 4.4 Create a WAF Policy
+
+Create a Web Application Firewall policy that the Application Gateway will use to inspect and filter traffic.
+
+```bash
+az network application-gateway waf-policy create \
+  --resource-group "rg-cwm-reporting" \
+  --name "cwm-waf-policy" \
+  --location "eastus"
+```
+
+Enable the managed OWASP rule set:
+
+```bash
+az network application-gateway waf-policy managed-rule rule-set add \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --type "OWASP" \
+  --version "3.2"
+```
+
+Set the WAF policy to **Prevention** mode (blocks malicious requests rather than just detecting them):
+
+```bash
+az network application-gateway waf-policy policy-setting update \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --mode Prevention \
+  --state Enabled
+```
+
+### 4.5 Create the Application Gateway
+
+Deploy the Application Gateway using the **WAF_v2** SKU, which provides both load-balancing and web application firewall capabilities.
 
 ```bash
 az network application-gateway create \
   --resource-group "rg-cwm-reporting" \
   --name "cwm-appgw" \
-  --sku Standard_v2 \
+  --sku WAF_v2 \
   --capacity 1 \
   --vnet-name "cwm-vnet" \
   --subnet "appgw-subnet" \
@@ -246,28 +276,40 @@ az network application-gateway create \
   --frontend-port 80 \
   --http-settings-port 80 \
   --http-settings-protocol Http \
+  --waf-policy "cwm-waf-policy" \
   --servers "10.0.2.4"
 ```
 
-> The `--servers` value (`10.0.2.4`) is a placeholder for the ACI container's private IP on the VNet. After deploying the web container for the first time, retrieve the actual private IP and update the Application Gateway backend pool accordingly (see [Part 9.2](#92-remove-the-dns-update-step)).
+> The `--servers` value (`10.0.2.4`) is a placeholder for the ACI container's private IP on the VNet. After deploying the web container for the first time, retrieve the actual private IP and update the Application Gateway backend pool accordingly (see [Part 9.2](#92-update-the-application-gateway-backend-after-deployment)).
 
-The static public IP (`cwm-web-public-ip`) is what your DNS and App Proxy will point to, and it remains stable across deployments.
+The static public IP (`cwm-web-public-ip`) is what your DNS A record will point to, and it remains stable across deployments.
 
 > When using VNet-integrated ACI, the `deploy-web.yml` workflow must be updated. See [Part 9](#part-9--workflow-modifications-for-static-ip-1015-min) for details.
 
 ---
 
-## Part 5 — Azure DNS Zone (10–15 min)
+## Part 5 — DNS Configuration (5–10 min)
 
-### 5.1 Create the DNS Zone
+Because your organization already has an authoritative DNS zone for your domain (e.g., `mycompany.com`), you do **not** need to create a new Azure DNS zone or configure NS delegation. Instead, add an A record directly in your existing DNS name server so that traffic for your chosen hostname is directed to the Application Gateway's static public IP.
 
-```bash
-az network dns zone create \
-  --resource-group "rg-cwm-reporting" \
-  --name "cwm-reporting.yourcompany.com"
-```
+### 5.1 Choose a Hostname
 
-### 5.2 Create A Records Pointing to the Static IP
+Select a hostname under your existing domain for the reporting dashboard, for example:
+
+- `reports.mycompany.com`
+- `cwm-reporting.mycompany.com`
+
+### 5.2 Add an A Record in Your Existing DNS Zone
+
+Log in to wherever your organization manages DNS for the domain (e.g., your DNS hosting provider's control panel, an on-premises DNS server, or an existing Azure DNS zone) and create an A record:
+
+| Record Type | Host / Name | Value | TTL |
+|-------------|-------------|-------|-----|
+| A | `reports` (relative to `mycompany.com`) | `<STATIC_IP>` | 300 (or your standard TTL) |
+
+Replace `<STATIC_IP>` with the public IP from [Part 4.2](#42-retrieve-the-static-ip).
+
+If you are managing the authoritative zone in Azure DNS, you can use the CLI:
 
 ```bash
 STATIC_IP=$(az network public-ip show \
@@ -276,34 +318,32 @@ STATIC_IP=$(az network public-ip show \
   --query ipAddress \
   --output tsv)
 
-# Production — root record
 az network dns record-set a add-record \
-  --resource-group "rg-cwm-reporting" \
-  --zone-name "cwm-reporting.yourcompany.com" \
-  --record-set-name "@" \
-  --ipv4-address "$STATIC_IP"
-
-# Staging — subdomain record
-az network dns record-set a add-record \
-  --resource-group "rg-cwm-reporting" \
-  --zone-name "cwm-reporting.yourcompany.com" \
-  --record-set-name "staging" \
+  --resource-group "<dns-zone-resource-group>" \
+  --zone-name "mycompany.com" \
+  --record-set-name "reports" \
   --ipv4-address "$STATIC_IP"
 ```
 
-### 5.3 Configure Domain Registrar NS Delegation
+> Replace `<dns-zone-resource-group>` with the resource group containing your existing Azure DNS zone, and adjust `mycompany.com` and `reports` to match your domain and chosen hostname.
 
-From the DNS zone output, copy the four Azure nameservers and add them as NS records at your domain registrar for the subdomain `cwm-reporting.yourcompany.com`.
+If you also want a staging hostname (e.g., `reports-staging.mycompany.com`), add a second A record pointing to the same static IP:
+
+| Record Type | Host / Name | Value | TTL |
+|-------------|-------------|-------|-----|
+| A | `reports-staging` (relative to `mycompany.com`) | `<STATIC_IP>` | 300 |
+
+### 5.3 Verify DNS Resolution
+
+After adding the record, verify it resolves correctly:
 
 ```bash
-az network dns zone show \
-  --resource-group "rg-cwm-reporting" \
-  --name "cwm-reporting.yourcompany.com" \
-  --query nameServers \
-  --output tsv
+nslookup reports.mycompany.com
 ```
 
-> DNS propagation can take up to 48 hours, though it often completes in minutes.
+The response should return the static public IP assigned to the Application Gateway.
+
+> DNS propagation depends on your DNS provider and TTL settings. It typically completes within minutes but can take up to the previous TTL value to expire from caches.
 
 ---
 
@@ -311,7 +351,7 @@ az network dns zone show \
 
 The application needs a service principal for two purposes:
 
-1. **GitHub Actions** — to deploy containers, manage ACI, and update DNS records.
+1. **GitHub Actions** — to deploy containers, manage ACI, and update the Application Gateway backend pool.
 2. **Web container runtime** — to start and stop ACI container groups via the Azure SDK.
 
 ### 6.1 Create the Service Principal
@@ -340,76 +380,207 @@ This outputs a JSON object. Save the entire output — it becomes the `AZURE_CRE
 }
 ```
 
-### 6.2 Assign Additional Role for DNS (if needed)
+### 6.2 Assign Additional Role for Network (if needed)
 
-If your DNS zone is in the same resource group, the Contributor role already covers it. If the DNS zone is in a different resource group, add:
+If your Application Gateway or VNet is in a different resource group than the ACI containers, assign the service principal the **Network Contributor** role on that resource group so the workflow can update the Application Gateway backend pool:
 
 ```bash
 az role assignment create \
   --assignee "<clientId-from-above>" \
-  --role "DNS Zone Contributor" \
-  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/<dns-resource-group-name>"
+  --role "Network Contributor" \
+  --scope "/subscriptions/$SUBSCRIPTION_ID/resourceGroups/<network-resource-group-name>"
 ```
 
 ---
 
-## Part 7 — Azure App Proxy and Entra Authentication (30–45 min)
+## Part 7 — Application Gateway WAF and Access Protection (15–25 min)
 
-Azure App Proxy ensures employees must authenticate with their company Entra (Azure AD) accounts before accessing the web dashboard.
+The Application Gateway deployed in [Part 4](#part-4--static-public-ip-address-and-application-gateway-1525-min) already provides a Web Application Firewall (WAF) with the OWASP managed rule set. This section covers additional access restrictions you should configure to protect the web interface.
 
-### 7.1 Prerequisites
+### 7.1 Restrict Access by Source IP (Recommended)
 
-- **Microsoft Entra ID P1 or P2 license** — required for Application Proxy.
-- At least one **Application Proxy connector** installed on a Windows Server that has line-of-sight to the internet.
+Create a WAF custom rule to allow traffic only from your organization's known public IP ranges (e.g., office egress IPs, VPN ranges) and deny everything else.
 
-### 7.2 Install the App Proxy Connector (10–15 min)
+```bash
+az network application-gateway waf-policy custom-rule create \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --name "AllowCorporateIPs" \
+  --priority 10 \
+  --rule-type MatchRule \
+  --action Allow
 
-1. In the Azure Portal, go to **Entra ID** → **Application proxy** → **Download connector service**.
-2. Install the connector on a Windows Server (2016 or later) that can reach the internet.
-3. Sign in with a Global Administrator account during setup.
-4. Verify the connector appears as **Active** in the portal.
+az network application-gateway waf-policy custom-rule match-condition add \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --name "AllowCorporateIPs" \
+  --match-variables RemoteAddr \
+  --operator IPMatch \
+  --values "203.0.113.0/24" "198.51.100.0/24"
+```
 
-### 7.3 Register the Enterprise Application
+> Replace `203.0.113.0/24` and `198.51.100.0/24` with your organization's actual public IP ranges. Add as many CIDR blocks as needed.
 
-1. In the Azure Portal, go to **Entra ID** → **Enterprise applications** → **+ New application** → **Create your own application**.
-2. Name it `CWM Custom Reporting`.
-3. Select **Configure Application Proxy for secure remote access to an on-premises application**.
-4. Configure the following:
+Then add a lower-priority rule to deny all other traffic:
 
-| Setting | Value |
-|---------|-------|
-| Internal URL | `http://<STATIC_IP>:80` |
-| External URL | Auto-generated (e.g., `https://cwm-reporting-yourcompany.msappproxy.net`) or custom domain |
-| Pre-authentication | Azure Active Directory |
-| Connector group | Select the group containing your installed connector |
+```bash
+az network application-gateway waf-policy custom-rule create \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --name "DenyAll" \
+  --priority 100 \
+  --rule-type MatchRule \
+  --action Block
 
-5. Click **Add**.
+az network application-gateway waf-policy custom-rule match-condition add \
+  --resource-group "rg-cwm-reporting" \
+  --policy-name "cwm-waf-policy" \
+  --name "DenyAll" \
+  --match-variables RemoteAddr \
+  --operator IPMatch \
+  --negate true \
+  --values "127.0.0.1"
+```
 
-### 7.4 Configure Custom Domain (Optional but Recommended)
+> This rule matches all remote addresses (by negating a match against `127.0.0.1`) and blocks them. Because the `AllowCorporateIPs` rule has a higher priority (lower number), allowed IPs are evaluated first and pass through.
 
-1. In the App Proxy application settings, go to **Application proxy**.
-2. Set **External URL** to `https://cwm-reporting.yourcompany.com`.
-3. Upload an SSL/TLS certificate (PFX) for `cwm-reporting.yourcompany.com`.
-4. Add a CNAME record in your DNS zone:
-   - **Name:** `cwm-reporting.yourcompany.com`
-   - **Type:** `CNAME`
-   - **Value:** `cwm-reporting-yourcompany.msappproxy.net`
+### 7.2 Apply an NSG to the Application Gateway Subnet (Optional)
 
-### 7.5 Configure User Assignment
+For defense in depth, add a Network Security Group to the Application Gateway subnet to restrict inbound traffic at the network layer:
 
-1. In the Enterprise application → **Users and groups** → **+ Add user/group**.
-2. Assign the relevant Entra security groups or individual users who should have access.
-3. In **Properties**, set **User assignment required?** to **Yes** to enforce access control.
+```bash
+az network nsg create \
+  --resource-group "rg-cwm-reporting" \
+  --name "cwm-appgw-nsg" \
+  --location "eastus"
 
-### 7.6 Configure Single Sign-On (Optional)
+# Allow HTTP from corporate IP ranges
+az network nsg rule create \
+  --resource-group "rg-cwm-reporting" \
+  --nsg-name "cwm-appgw-nsg" \
+  --name "AllowHTTPFromCorp" \
+  --priority 100 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-ranges 80 443 \
+  --source-address-prefixes "203.0.113.0/24" "198.51.100.0/24"
 
-1. In the Enterprise application → **Single sign-on**.
-2. Since the backend web app does not natively support SSO, select **None** or **Header-based** if you want to pass Entra user claims via HTTP headers.
+# Required: Allow Application Gateway infrastructure traffic
+az network nsg rule create \
+  --resource-group "rg-cwm-reporting" \
+  --nsg-name "cwm-appgw-nsg" \
+  --name "AllowGatewayManager" \
+  --priority 200 \
+  --direction Inbound \
+  --access Allow \
+  --protocol Tcp \
+  --destination-port-ranges 65200-65535 \
+  --source-address-prefixes GatewayManager
 
-### 7.7 Conditional Access Policies (Optional but Recommended)
+# Deny all other inbound traffic
+az network nsg rule create \
+  --resource-group "rg-cwm-reporting" \
+  --nsg-name "cwm-appgw-nsg" \
+  --name "DenyAllInbound" \
+  --priority 4096 \
+  --direction Inbound \
+  --access Deny \
+  --protocol "*" \
+  --destination-port-ranges "*" \
+  --source-address-prefixes "*"
 
-1. Go to **Entra ID** → **Security** → **Conditional Access** → **+ New policy**.
-2. Create a policy requiring MFA or device compliance for access to the `CWM Custom Reporting` application.
+# Associate NSG with the Application Gateway subnet
+az network vnet subnet update \
+  --resource-group "rg-cwm-reporting" \
+  --vnet-name "cwm-vnet" \
+  --name "appgw-subnet" \
+  --network-security-group "cwm-appgw-nsg"
+```
+
+> Replace the source address prefixes with your organization's actual public IP ranges. The `GatewayManager` rule on ports 65200–65535 is **required** for Application Gateway v2 health probes and must not be removed.
+
+### 7.3 Enable HTTPS with a TLS Certificate (Optional but Recommended)
+
+To serve the dashboard over HTTPS, add your TLS certificate and an HTTPS listener to the Application Gateway.
+
+1. Upload your PFX certificate:
+
+```bash
+az network application-gateway ssl-cert create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "cwm-tls-cert" \
+  --cert-file "./certificate.pfx" \
+  --cert-password "<pfx-password>"
+```
+
+2. Add an HTTPS frontend port and listener:
+
+```bash
+az network application-gateway frontend-port create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "httpsPort" \
+  --port 443
+
+az network application-gateway http-listener create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "httpsListener" \
+  --frontend-port "httpsPort" \
+  --frontend-ip "appGatewayFrontendIP" \
+  --ssl-cert "cwm-tls-cert"
+
+az network application-gateway rule create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "httpsRule" \
+  --priority 100 \
+  --http-listener "httpsListener" \
+  --address-pool "appGatewayBackendPool" \
+  --http-settings "appGatewayBackendHttpSettings"
+```
+
+3. Optionally add a redirect rule to send HTTP traffic to HTTPS:
+
+```bash
+az network application-gateway redirect-config create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "httpToHttpsRedirect" \
+  --type Permanent \
+  --target-listener "httpsListener"
+
+az network application-gateway rule update \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "rule1" \
+  --redirect-config "httpToHttpsRedirect"
+```
+
+### 7.4 Configure Health Probes
+
+Create a custom health probe so the Application Gateway can verify the web container is responding:
+
+```bash
+az network application-gateway probe create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "cwm-health-probe" \
+  --protocol Http \
+  --host-name-from-http-settings true \
+  --path "/" \
+  --interval 30 \
+  --timeout 30 \
+  --threshold 3
+
+az network application-gateway http-settings update \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "appGatewayBackendHttpSettings" \
+  --probe "cwm-health-probe"
+```
 
 ---
 
@@ -502,7 +673,7 @@ subnetIds:
 
 > Replace `<subscription-id>` with your Azure subscription ID from [Part 1.1](#11-create-the-azure-subscription).
 
-### 9.2 Remove the DNS Update Step
+### 9.2 Update the Application Gateway Backend After Deployment
 
 Because DNS now points permanently to the static IP on the Application Gateway, remove the **Update Azure DNS Records** step from `deploy-web.yml`. Instead, after each deployment, update the Application Gateway backend pool to point to the new ACI private IP:
 
@@ -524,13 +695,9 @@ az network application-gateway address-pool update \
 
 Add these commands to `deploy-web.yml` as a replacement for the removed DNS update step.
 
-### 9.3 Update the DNS Zone Name
+### 9.3 DNS Zone Name in Workflow (If Applicable)
 
-If keeping the DNS update step (e.g., for a non-static-IP setup), update the `DNS_ZONE_NAME` variable in `deploy-web.yml` to your new domain:
-
-```yaml
-DNS_ZONE_NAME=cwm-reporting.yourcompany.com
-```
+If the workflow still references a `DNS_ZONE_NAME` variable (e.g., for a non-static-IP setup), it can be removed. DNS is now managed directly in your organization's existing authoritative zone (see [Part 5](#part-5--dns-configuration-510-min)) and does not require updates during deployment.
 
 ---
 
@@ -571,9 +738,9 @@ az container show \
 
 ### 10.4 Verify the Web Dashboard
 
-1. Navigate to your App Proxy external URL (e.g., `https://cwm-reporting.yourcompany.com`).
-2. You should be prompted to sign in with your Entra account.
-3. After authentication, the CWM Custom Reporting dashboard should load.
+1. Navigate to your hostname (e.g., `http://reports.mycompany.com` or `https://reports.mycompany.com` if TLS was configured in [Part 7.3](#73-enable-https-with-a-tls-certificate-optional-but-recommended)).
+2. If WAF IP restrictions are configured ([Part 7.1](#71-restrict-access-by-source-ip-recommended)), verify that access works from an allowed IP and is blocked from a non-allowed IP.
+3. The CWM Custom Reporting dashboard should load.
 4. Verify reports are populating (may take up to 2 minutes for the first reporting cycle).
 5. Test CSV download, board filtering, and container power controls.
 
@@ -602,16 +769,16 @@ az storage file list \
 | 1 | Azure Subscription and Resource Group | 15–20 min |
 | 2 | Azure Container Registry | 5–10 min |
 | 3 | Storage Account and File Shares | 10–15 min |
-| 4 | Static Public IP and Networking | 5–10 min |
-| 5 | Azure DNS Zone | 10–15 min |
+| 4 | Static Public IP and Application Gateway | 15–25 min |
+| 5 | DNS Configuration | 5–10 min |
 | 6 | Service Principal | 10–15 min |
-| 7 | Azure App Proxy and Entra Authentication | 30–45 min |
+| 7 | Application Gateway WAF and Access Protection | 15–25 min |
 | 8 | GitHub Repository and Secrets | 15–20 min |
 | 9 | Workflow Modifications | 10–15 min |
 | 10 | Deployment and Validation | 15–20 min |
 | | **Total** | **~2–3 hours** |
 
-> DNS propagation ([Part 5.3](#53-configure-domain-registrar-ns-delegation)) can add additional wait time of up to 48 hours, though it typically resolves within minutes to a few hours.
+> DNS propagation ([Part 5.3](#53-verify-dns-resolution)) timing depends on your DNS provider and TTL settings. It typically resolves within minutes.
 
 ---
 
@@ -621,5 +788,7 @@ az storage file list \
 - **Service principal secret** — The client secret expires after one year by default. Set a calendar reminder to rotate it and update `AZURE_CREDENTIALS` in GitHub.
 - **Storage account keys** — Rotate keys periodically and update `AZURE_STORAGE_ACCOUNT_KEY` in GitHub after rotation.
 - **CWM API keys** — If ConnectWise keys are rotated, update all `CWM_*` secrets in GitHub.
-- **App Proxy connector** — Keep the connector host patched and ensure connector auto-updates are enabled.
-- **SSL certificates** — If using a custom domain on App Proxy, track certificate expiration and renew before it expires.
+- **Application Gateway** — Monitor the gateway's health through Azure Monitor. Review WAF logs periodically to detect blocked threats and adjust custom rules as needed.
+- **WAF IP allow list** — When corporate IP ranges change (e.g., office moves, new VPN egress IPs), update the WAF custom rules in [Part 7.1](#71-restrict-access-by-source-ip-recommended) and the NSG rules in [Part 7.2](#72-apply-an-nsg-to-the-application-gateway-subnet-optional) to maintain access.
+- **TLS certificates** — If HTTPS was configured on the Application Gateway ([Part 7.3](#73-enable-https-with-a-tls-certificate-optional-but-recommended)), track certificate expiration and renew before it expires.
+- **DNS records** — If the static public IP ever changes (unlikely unless the IP resource is deleted and recreated), update the A record in your authoritative DNS zone.
