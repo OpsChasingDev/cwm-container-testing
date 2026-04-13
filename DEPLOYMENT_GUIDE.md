@@ -419,7 +419,7 @@ az network application-gateway waf-policy custom-rule match-condition add \
   --values "203.0.113.0/24" "198.51.100.0/24"
 ```
 
-> Replace `203.0.113.0/24` and `198.51.100.0/24` with your organization's actual public IP ranges. Add as many CIDR blocks as needed.
+> **Important:** Replace `203.0.113.0/24` and `198.51.100.0/24` with your organization's actual public IP ranges (e.g., office egress IPs, VPN gateway IPs). The addresses shown here are [RFC 5737](https://datatracker.ietf.org/doc/html/rfc5737) documentation-only ranges and will not route real traffic. Add as many CIDR blocks as needed.
 
 Then add a lower-priority rule to deny all other traffic:
 
@@ -498,15 +498,23 @@ az network vnet subnet update \
   --network-security-group "cwm-appgw-nsg"
 ```
 
-> Replace the source address prefixes with your organization's actual public IP ranges. The `GatewayManager` rule on ports 65200–65535 is **required** for Application Gateway v2 health probes and must not be removed.
+> **Important:** Replace the source address prefixes (`203.0.113.0/24`, `198.51.100.0/24`) with your organization's actual public IP ranges — these are documentation-only addresses per [RFC 5737](https://datatracker.ietf.org/doc/html/rfc5737). The `GatewayManager` rule on ports 65200–65535 is **required** for Application Gateway v2 health probes and must not be removed.
 
 ### 7.3 Enable HTTPS with a TLS Certificate (Optional but Recommended)
 
 To serve the dashboard over HTTPS, add your TLS certificate and an HTTPS listener to the Application Gateway.
 
-1. Upload your PFX certificate:
+1. Upload your PFX certificate. For production use, store the certificate in **Azure Key Vault** and reference it from the Application Gateway instead of passing the password on the command line:
 
 ```bash
+# Option A — Reference a certificate stored in Azure Key Vault (recommended):
+az network application-gateway ssl-cert create \
+  --resource-group "rg-cwm-reporting" \
+  --gateway-name "cwm-appgw" \
+  --name "cwm-tls-cert" \
+  --key-vault-secret-id "https://<your-keyvault>.vault.azure.net/secrets/<cert-name>"
+
+# Option B — Upload a PFX file directly (use a secure input method for the password):
 az network application-gateway ssl-cert create \
   --resource-group "rg-cwm-reporting" \
   --gateway-name "cwm-appgw" \
@@ -514,6 +522,8 @@ az network application-gateway ssl-cert create \
   --cert-file "./certificate.pfx" \
   --cert-password "<pfx-password>"
 ```
+
+> **Security note:** If using Option B, avoid storing the PFX password in scripts or command history. Use an environment variable or a secrets manager to pass it securely.
 
 2. Add an HTTPS frontend port and listener:
 
