@@ -2,3 +2,6 @@
 .env
 .env.local
 .vscode
+# Captured Azure state for teardown/restore (contains plaintext secrets)
+.infra-state/
+__pycache__/
